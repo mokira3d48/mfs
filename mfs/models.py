@@ -71,20 +71,21 @@ class File(models.Model):
     def mkdir(self):
         """ Function to create the fildir for this file """
         # we check if the uploading directory is exists
-        if os.path.isdir(FSDIR):
-            if not os.path.isdir(self.dirpath):
-                os.makedirs(self.dirpath);
-                utils.printsucc("Directory at -> {} is created.".format(self.dirpath));
+        # if os.path.isdir(FSDIR):
+        if not os.path.isdir(self.dirpath):
+            print("In the creation process !!!")
+            os.makedirs(self.dirpath);
+            utils.printsucc("Directory at -> {} is created.".format(self.dirpath))
+            return True
 
-            return True;
-
-        utils.printerr("The fs directory -> {} is not exists.".format(FSDIR));
-        return False;
+        utils.printerr("The fs directory -> {} is not exists.".format(FSDIR))
+        return False
 
     def touch(self):
         """ Function to create this file in the dirpath. """
         # create dir if not existe
         created = self.mkdir();
+        print("After FSDIR folder", "Created value: ", created)
         if created:
             # if the dir is created, then we can create this file.
             if not os.path.isfile(self.filepath):
