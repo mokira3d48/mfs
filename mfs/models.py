@@ -46,14 +46,6 @@ class File(models.Model):
         else:
             return os.path.join(self.dirpath, self.name);
 
-    @property
-    def indb(self):
-        """ 
-        Retourne True si la données a été sauvegardée dans la
-        base de données, False sinon.
-        """
-        return self.id is not None;
-
     def url(self, host='/'):
         filedir = self.filedir or self.DEFAULT_DIR_NAME;
         fileext = self.ext     or self.DEFAULT_FILE_EXT;
@@ -66,26 +58,25 @@ class File(models.Model):
 
     def __init__(self, *args, **kwargs):
         super(File, self).__init__(*args, **kwargs);
-        self.__instance = None;
+        self._instance = None;
 
     def mkdir(self):
         """ Function to create the fildir for this file """
         # we check if the uploading directory is exists
-        # if os.path.isdir(FSDIR):
-        if not os.path.isdir(self.dirpath):
-            print("In the creation process !!!")
-            os.makedirs(self.dirpath);
-            utils.printsucc("Directory at -> {} is created.".format(self.dirpath))
-            return True
+        if os.path.isdir(FSDIR):
+            if not os.path.isdir(self.dirpath):
+                os.makedirs(self.dirpath);
+                utils.printsucc("Directory at -> {} is created.".format(self.dirpath));
 
-        utils.printerr("The fs directory -> {} is not exists.".format(FSDIR))
-        return False
+            return True;
+
+        utils.printerr("The fs directory -> {} is not exists.".format(FSDIR));
+        return False;
 
     def touch(self):
         """ Function to create this file in the dirpath. """
         # create dir if not existe
         created = self.mkdir();
-        print("After FSDIR folder", "Created value: ", created)
         if created:
             # if the dir is created, then we can create this file.
             if not os.path.isfile(self.filepath):
@@ -100,22 +91,22 @@ class File(models.Model):
         """ Function to check if this file is exists. """
         return os.path.exists(self.filepath);
 
-    def open(self,  mode='r'):
-        if type(self.filepath) is str:
+    def open(self,  mode='rt'):
+        if type(self.path) is str:
             try:
                 isfile = self.touch();
                 if isfile:
-                    self.__instance = open(self.filepath, mode);
-                    return self.__instance;
+                    self._instance = open(self.path, mode);
+                    return self._instance;
             except Exception as e:
                 utils.printerr("This error is detected: {}".format(e.args[0]));
 
         return False;
 
     def read(self, *args, **kwargs):
-        if self.__instance is not None:
+        if self._instance is not None:
             try:
-                return self.__instance.read(*args, **kwargs);
+                return self._instance.read(*args, **kwargs);
             except Exception as e:
                 utils.printerr("This error is detected: {}".format(e.args[0]));
         else:
@@ -124,9 +115,9 @@ class File(models.Model):
         return False;
 
     def readline(self, *args, **kwargs):
-        if self.__instance is not None:
+        if self._instance is not None:
             try:
-                return self.__instance.readline(*args, **kwargs);
+                return self._instance.readline(*args, **kwargs);
             except Exception as e:
                 utils.printerr("This error is detected: {}".format(e.args[0]));
         else:
@@ -134,9 +125,9 @@ class File(models.Model):
             return False;
 
     def write(self, data):
-        if self.__instance is not None:
+        if self._instance is not None:
             try:
-                self.__instance.write(data);
+                self._instance.write(data);
                 return data;
             except Exception as e:
                 utils.printerr("This error is detected: {}".format(e.args[0]));
@@ -146,10 +137,10 @@ class File(models.Model):
         return False;
 
     def close(self):
-        if self.__instance is not None:
+        if self._instance is not None:
             try:
-                self.__instance.close();
-                self.__instance = None;
+                self._instance.close();
+                self._instance = None;
                 return True;
             except Exception as e:
                 utils.printerr("This error is detected: {}".format(e.args[0]));
@@ -159,22 +150,10 @@ class File(models.Model):
         return False;
 
     def save(self, *args, **kwargs):
-        """ 
-        Fonction de sauvegarde des données d'un fichier
-        dans la base de données.
-        """
         created = self.touch();
         if created:
-            try:
-                self.size = os.path.getsize(self.filepath);
-                return super(File, self).save(*args, **kwargs);
-            except:
-                # dans le cas où les informations du fichier
-                # ne sont pas sauvegardées dans la base de données
-                # on note les informations sur l'erreur dans un
-                # fichier .log
-                utils.printerr("Unable to save information of {} file in database.".format(self.filepath));
-                return False;
+            self.size = os.path.getsize(self.filepath);
+            return super(File, self).save(*args, **kwargs);
 
         utils.printerr("Unable to save this file at -> {} !".format(self.filepath));
         return False;

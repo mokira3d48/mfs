@@ -8,11 +8,13 @@ FSURL = None;
 
 if not hasattr(settings, 'FSDIR'):
     FSDIR = os.path.join(settings.BASE_DIR, "fsdir");
-    if not os.path.isdir(FSDIR):
-        os.mkdir(FSDIR);
-        utils.printsucc("{} is created.".format(FSDIR));
 else:
     FSDIR = settings.FSDIR;
+
+if not os.path.isdir(FSDIR):
+    os.mkdir(FSDIR);
+    utils.printsucc("{} is created.".format(FSDIR));
+
 
 if not hasattr(settings, 'FSURL'):
     FSURL = "/file/";
