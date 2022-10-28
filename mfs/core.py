@@ -146,8 +146,9 @@ def get_file_uploaded(file_uploaded, FileModel, filedir=''):
         if moved:
             info(file_uploaded);
             info(file_uploaded.content_type);
-            # TODO intialiser l'instance MFS
-            instance.ext = file_uploaded.content_type.split('/')[1];
+            ctsplited = file_uploaded.content_type.split('/');
+            if len(ctsplited) >= 2:
+                instance.ext = ctsplited[1];
             return instance;
         else:
             erro("Moving of file uploaded is failed.");

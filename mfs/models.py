@@ -102,6 +102,9 @@ class File(models.Model):
             if ext:
                 self.name = "{name}.{ext}".format(name=name, ext=ext);
                 self.ext  = ext;
+                return self.name;
+        if (len(namesplit) == 2 and namesplit[1]):
+            self.ext = namesplit[1];
 
     def mkdir(self):
         """ Function to create the fildir for this file """
