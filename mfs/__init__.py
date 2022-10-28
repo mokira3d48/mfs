@@ -1,6 +1,6 @@
 import os
 from django.conf import settings
-from .utils import utils
+from .utils import *
 # from .core  import *
 
 FSDIR = None;
@@ -13,7 +13,7 @@ else:
 
 if not os.path.isdir(FSDIR):
     os.mkdir(FSDIR);
-    utils.printsucc("{} is created.".format(FSDIR));
+    printsucc("{} is created.".format(FSDIR));
 
 
 if not hasattr(settings, 'FSURL'):

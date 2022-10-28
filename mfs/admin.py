@@ -1,7 +1,7 @@
 from django.contrib import admin
 
 
-class FileModelAdmin(admin.ModelAdmin):
+class AbstractFileModelAdmin(admin.ModelAdmin):
     """
     Modèle administratif des fichiers du système 
     de fichier du serveur.

@@ -5,21 +5,21 @@ from django.contrib.auth.models import User
 from django.conf import settings
 from .       import FSDIR
 from .models import File
-from .utils  import utils
+from .utils  import *
 
 
 def hasperm(file: File, user):
     if file.visibility == File.PUBLIC:
-        utils.printinfo("Public file recovering ...");
+        printinfo("Public file recovering ...");
         return True;
 
     elif file.visibility == File.PROTECTED:
-        utils.printinfo("Protected file recovering ...");
-        utils.printinfo(f"User info {user}");
+        printinfo("Protected file recovering ...");
+        printinfo(f"User info {user}");
         return user.is_authenticated and user.has_perm('mfs.download', file);
 
     else:
-        utils.printinfo("Private file recovering ...");
+        printinfo("Private file recovering ...");
         return user.is_authenticated\
                 and (user.is_staff or user.is_superuser)\
                 and user.has_perm('mfs.download', file);
@@ -135,4 +135,21 @@ def find(filename, fclass, dirname=FSDIR):
                             # le résultat
                             return result;
 
+
+def get_file_uploaded(file_uploaded, FileModel, filedir=''):
+    """
+    Fonction de recuperation d'un fichier uploadee """
+    # info(request.FILES);
+    if file_uploaded:
+        instance = FileModel(name=str(file_uploaded), filedir=filedir).touch();
+        moved    = handle_uploaded_file(file_uploaded, instance.filepath);
+        if moved:
+            info(file_uploaded);
+            info(file_uploaded.content_type);
+            # TODO intialiser l'instance MFS
+            instance.ext = file_uploaded.content_type.split('/')[1];
+            return instance;
+        else:
+            erro("Moving of file uploaded is failed.");
+    return 0;
 

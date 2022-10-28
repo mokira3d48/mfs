@@ -4,7 +4,7 @@ from django.shortcuts import get_object_or_404
 from rest_framework import views
 from rest_framework import response
 from .models import File
-from .utils  import utils
+from .utils  import *
 from . import FSURL
 
 

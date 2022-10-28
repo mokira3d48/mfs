@@ -3,7 +3,7 @@ import jwt
 from django.conf import settings
 from rest_framework.response import Response
 from rest_framework.renderers import JSONRenderer
-from .utils import utils
+from .utils import *
 from . import FSURL
 
 
@@ -21,11 +21,11 @@ class FileAccessMiddleware:
         is_furl = re.match(f"^{mfsuri}", absuri);
 
         if not is_furl:
-            # utils.printinfo(absuri);
-            # utils.printinfo(is_furl);
+            # printinfo(absuri);
+            # printinfo(is_furl);
             return self.get_response(request);
         else:
-            utils.printinfo(absuri);
+            printinfo(absuri);
             return self.__file_rec(request);
 
     def __file_rec(self, request):
