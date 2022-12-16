@@ -114,7 +114,9 @@ from mfs.models import File
 
 
 class Image(File):
-    """ Fichier PEM associe a la demande de certification. """
+    """
+    Image file database model definition 
+    """
     DEFAULT_DIR_NAME = "Pictures";      # define the root folder name of our images
     DEFAULT_FILE_EXT = "png";           # define the global extension
     
