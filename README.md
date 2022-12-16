@@ -132,3 +132,24 @@ class Image(File):
 
 ```
 
+Now we will try to create an image uploading function in the `views.py` file :
+
+```python
+from django.shortcuts import render
+from mfs.core import get_file_uploaded
+from .models  import Image
+
+
+def image_uploader(request):
+    """
+    Function of image file uploading
+    """
+    mfs_img = get_file_uploaded(request.FILES.get('file'), Image);
+    mfs_img.save();
+    print(mfs_img);
+    return f"{mfs_img.name} at {mfs_img.filepath} is uploaded successfully!";
+
+
+```
+
+
