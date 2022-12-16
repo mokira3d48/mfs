@@ -1,5 +1,7 @@
 # Django Midnight File System
 ![](https://img.shields.io/badge/Python-3.8.10-blue)
+![](https://img.shields.io/badge/Django-3.2.6-%2344B78B)
+![](https://img.shields.io/badge/REST%20framework-3.13.1-%23A30000)
 
 Django Midnight File System (MFS) is a Django application programmed to manage easily the server files
 created and uploaded with the permissions and download authorizations.
@@ -44,18 +46,6 @@ virtualenv env -p python3
 ### Lauch environment
 ```sh
 source env/bin/activate
-```
-
-### Python version
-
-```sh
-python --version
-```
-
-Show :
-
-```
-Python 3.8.10
 ```
 
 ### Dependences installation
