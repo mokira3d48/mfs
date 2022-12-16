@@ -9,6 +9,9 @@ from .utils  import *
 
 
 def hasperm(file: File, user):
+    """
+    Function of checking the user permissions.
+    """
     if file.visibility == File.PUBLIC:
         printinfo("Public file recovering ...");
         return True;
@@ -26,6 +29,9 @@ def hasperm(file: File, user):
 
 
 def get_client_ip(request):
+    """
+    Function of retreiving of IP address of the client machine.
+    """
     x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR');
     if x_forwarded_for:
         ip = x_forwarded_for.split(',')[0];
@@ -35,6 +41,9 @@ def get_client_ip(request):
 
 
 def userinfo(user):
+    """
+    Function that is used to get some user infos.
+    """
     return {
         "username": user.username,
         "first_name": user.first_name,
@@ -44,8 +53,9 @@ def userinfo(user):
 
 
 def get_access_url(request, file: File, duration=dt.timedelta(minutes=1)):
-    """ Function to get URL file
-        ======================== """
+    """ 
+    Function to get URL file.
+    """
     user = request.user;
     url  = None;
     tok  = None;
@@ -138,7 +148,8 @@ def find(filename, fclass, dirname=FSDIR):
 
 def get_file_uploaded(file_uploaded, FileModel, filedir=''):
     """
-    Fonction de recuperation d'un fichier uploadee """
+    Fonction de recuperation d'un fichier uploadee.
+    """
     # info(request.FILES);
     if file_uploaded:
         instance = FileModel(name=str(file_uploaded), filedir=filedir).touch();
