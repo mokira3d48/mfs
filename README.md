@@ -1,5 +1,5 @@
 # Django Midnight File System
-DjangoMidnight File System (MFS) is a Django application programmed to manage easily the server files
+Django Midnight File System (MFS) is a Django application programmed to manage easily the server files
 created and uploaded with the permissions and download authorizations.
 
 
@@ -91,3 +91,42 @@ from django.conf.urls.static import static
 urlpatterns += static(settings.FSURL, document_root=settings.FSDIR);
 
 ```
+
+4. Execute the following django commands to make migration of the database File model :
+
+```sh
+./manage.py makemigrations;\
+./manage.py migrate
+```
+
+All is done !
+
+## Usage
+We will see some examples of use cases in a Django project. Given an application named `galery`.
+
+1. Example 1:
+You can create model of image file in `galery` like following code :
+
+```python
+from django.utils.translation import gettext_lazy as _
+from django.db  import models
+from mfs.models import File
+
+
+class Image(File):
+    """ Fichier PEM associe a la demande de certification. """
+    DEFAULT_DIR_NAME = "Pictures";      # define the root folder name of our images
+    DEFAULT_FILE_EXT = "png";           # define the global extension
+    
+    class Meta:
+        verbose_name = _("CSR file");
+
+    def __str__(self):
+        """
+        Function to return a representation of this model in string.
+        """
+        return self.name;   # this attribut is already defined on File superclass
+
+
+```
+
