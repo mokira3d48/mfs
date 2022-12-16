@@ -1,4 +1,6 @@
 # Django Midnight File System
+![](https://img.shields.io/badge/Python-3.8.10-blue)
+
 Django Midnight File System (MFS) is a Django application programmed to manage easily the server files
 created and uploaded with the permissions and download authorizations.
 
@@ -44,7 +46,7 @@ virtualenv env -p python3
 source env/bin/activate
 ```
 
-## Python version
+### Python version
 
 ```sh
 python --version
@@ -121,11 +123,11 @@ class Image(File):
     DEFAULT_FILE_EXT = "png";           # define the global extension
     
     class Meta:
-        verbose_name = _("CSR file");
+        verbose_name = _("Image");
 
     def __str__(self):
         """
-        Function to return a representation of this model in string.
+        Function to return a representation of this model into string.
         """
         return self.name;   # this attribut is already defined on File superclass
 
