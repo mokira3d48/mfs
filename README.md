@@ -21,6 +21,8 @@ used is `python 3.8.10`.
 
 
 ### Install venv
+You can install a python virtualenv program in two different ways.
+
 ```sh
 sudo apt install python3-venv
 ```
@@ -32,6 +34,8 @@ sudo pip3 install virtualenv
 ```
 
 ### Create virtual environment
+In your project root, if you have not already done so, run one of the following commands to create 
+a virtual environment.
 
 ```sh
 python3 -m venv env
@@ -44,6 +48,7 @@ virtualenv env -p python3
 ```
 
 ### Lauch environment
+
 ```sh
 source env/bin/activate
 ```
