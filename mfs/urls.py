@@ -9,15 +9,15 @@ from .utils import *
 
 
 router = routers.DefaultRouter()
-router.register(r'fupload', views.FileUploadingAPI, basename="upload");
+router.register(r'fupload', views.FileUploadingAPI, basename="upload")
 
 
 urlpatterns = [
     urls.path('api/', urls.include(router.urls), name="api"),
-];
+]
 
-printinfo(f"FSDIR = {FSDIR}");
-printinfo(f"FSURL = {FSURL}");
+printinfo(f"FSDIR = {FSDIR}")
+printinfo(f"FSURL = {FSURL}")
 
 # define an URL for file directory.
 # urlpatterns += static(FSURL, document_root=FSDIR);

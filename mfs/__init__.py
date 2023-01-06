@@ -3,21 +3,21 @@ from django.conf import settings
 from .utils import *
 # from .core  import *
 
-FSDIR = None;
-FSURL = None;
+
+FSDIR = None
+FSURL = None
 
 if not hasattr(settings, 'FSDIR'):
-    FSDIR = os.path.join(settings.BASE_DIR, "fsdir");
+    FSDIR = os.path.join(settings.BASE_DIR, "fsdir")
 else:
-    FSDIR = settings.FSDIR;
+    FSDIR = settings.FSDIR
 
 if not os.path.isdir(FSDIR):
-    os.mkdir(FSDIR);
-    printsucc("{} is created.".format(FSDIR));
-
+    os.mkdir(FSDIR)
+    printsucc("{} is created.".format(FSDIR))
 
 if not hasattr(settings, 'FSURL'):
-    FSURL = "/file/";
+    FSURL = "/file/"
 else:
-    FSURL = settings.FSURL;
+    FSURL = settings.FSURL
 

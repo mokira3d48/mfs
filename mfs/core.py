@@ -9,159 +9,190 @@ from .utils  import *
 
 
 def hasperm(file: File, user):
-    """
-    Function of checking the user permissions.
+    """ Function of checking the user permissions.
+    
+    Args:
+        file (:obj:`File`): The file object.
+        user (:obj:`django.contrib.auth.models.User`): The user object.
+    
+    Returns:
+        bool: If the user has the permission to access to the file,
+            then this function return True. Overrise, it returns False.
     """
     if file.visibility == File.PUBLIC:
-        printinfo("Public file recovering ...");
-        return True;
-
+        printinfo("Public file recovering ...")
+        return True
     elif file.visibility == File.PROTECTED:
-        printinfo("Protected file recovering ...");
-        printinfo(f"User info {user}");
-        return user.is_authenticated and user.has_perm('mfs.download', file);
-
+        printinfo("Protected file recovering ...")
+        printinfo(f"User info {user}")
+        return user.is_authenticated and user.has_perm('mfs.download', file)
     else:
-        printinfo("Private file recovering ...");
+        printinfo("Private file recovering ...")
         return user.is_authenticated\
                 and (user.is_staff or user.is_superuser)\
-                and user.has_perm('mfs.download', file);
+                and user.has_perm('mfs.download', file)
 
 
 def get_client_ip(request):
+    """ Retreiving of IP address.
+
+    Function of retreiving of IP address of
+    the client machine.
+    
+    Args:
+        request (:obj:`HTTPRequest`): The HTTP request received
+            via the view.
+
+    Returns:
+        str: Returns IP address.
     """
-    Function of retreiving of IP address of the client machine.
-    """
-    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR');
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
     if x_forwarded_for:
-        ip = x_forwarded_for.split(',')[0];
+        ip = x_forwarded_for.split(',')[0]
     else:
-        ip = request.META.get('REMOTE_ADDR');
-    return ip;
+        ip = request.META.get('REMOTE_ADDR')
+    return ip
 
 
 def userinfo(user):
-    """
-    Function that is used to get some user infos.
+    """ Function that is used to get some user infos.
+
+    Args:
+        user (:obj:`django.contrib.auth.models.User`): The user.
+
+    Returns:
+        dict: The dictionary of user information.
     """
     return {
         "username": user.username,
         "first_name": user.first_name,
         "last_name":  user.last_name,
     } if user.is_authenticated\
-        else "__anonymous__";
+        else "__anonymous__"
 
 
 def get_access_url(request, file: File, duration=dt.timedelta(minutes=1)):
-    """ 
-    Function to get URL file.
-    """
-    user = request.user;
-    url  = None;
-    tok  = None;
+    """ Function to get URL file.
 
+    Args:
+        request (:obj:`HTTPRequest`): The HTTP request received
+            via the view.
+        file (:obj:`File`): The file object.
+        duration (:obj:`timedelta`): The duration of the token.
+            Default set to 1 min (dt.timedelta(minutes=1)).
+
+    Returns:
+        tuple: Returns the tuple of access URL and the string
+            of the access token.
+        bool: Returns False, if the access to this file is not
+            allowed to this request.user.
+    """
+    user = request.user
+    url = None
+    tok = None
     if hasperm(file, user):
-        ipc = get_client_ip(request);
-        url = file.url(request.build_absolute_uri('/'));
+        ipc = get_client_ip(request)
+        url = file.url(request.build_absolute_uri('/'))
         tok = jwt.encode({
                 'user': userinfo(user),
                 'ipc':  ipc,
                 'exp':  dt.datetime.utcnow() + duration
-        }, settings.SECRET_KEY, algorithm='HS256');
-        return url, tok;
+        }, settings.SECRET_KEY, algorithm='HS256')
+        return url, tok
     else:
-        return False;
+        return False
 
 
 def getfile(filename, fclass, dirname=FSDIR):
     """
-    Fonction de récupération d'un fichier depuis le système de
-    fichier du serveur.
+    Function to retrieve a file from the server's file system.
+    file system.
     """
-    # si on verifie si la classe indiqué comme classe
-    # pour contenir les informations sur le fichier
-    # qu'on veut indexer est belle et bien une sous classe
-    # de la classe mfs.models.File
+    # if we check if the class indicated
+    # to contain the information about the file
+    # that we want to index is indeed a subclass
+    # of the class mfs.models.File
     if issubclass(fclass, File):
-        # on verifie si le path vers le fichier est valide 
-        # et que le fichier existe belle et bien à l'endroit 
-        # indiqué dans cet path
-        abspath = os.path.join(dirname, filename);
+        # we check if the path to the file is valid 
+        # and that the file exists in the location 
+        # indicated in this path
+        abspath = os.path.join(dirname, filename)
         if os.path.exists(abspath):
-            # on instancie ensuite un nouvel objet de type fclass
-            # pour contenir les informations sur ce dernier
-            instance = fclass();
-            dirn     = os.path.dirname(filename);
-            instance.filedir = dirn if dirn else dirname;
-            filenamext       = (os.path.basename(filename)).split('.');
-            instance.name    = filenamext[0];
-            instance.ext     = filenamext[1] if len(filenamext) > 1 else '';
-            instance.size    = os.path.getsize(abspath);
-            return instance;
+            # we then instantiate a new object of type fclass
+            # to contain the information about the latter
+            instance = fclass()
+            dirn = os.path.dirname(filename)
+            instance.filedir = dirn if dirn else dirname
+            filenamext = (os.path.basename(filename)).split('.')
+            instance.name = filenamext[0]
+            instance.ext = filenamext[1] if len(filenamext) > 1 else ''
+            instance.size = os.path.getsize(abspath)
+            return instance
 
 
 def find(filename, fclass, dirname=FSDIR):
     """
-    Fonction de recherche d'un fichier dans le système de fichier
-    du serveur.
+    Search function for a file in the server's file system.
+    of the server.
     """
-    # si on verifie si la classe indiqué comme classe
-    # pour contenir les informations sur le fichier
-    # qu'on veut indexer est belle et bien une sous classe
-    # de la classe mfs.models.File
+    # if we check if the class indicated
+    # to contain the information about the file
+    # that we want to index is indeed a subclass
+    # of the class mfs.models.File
     if issubclass(fclass, File):
         if filename:
-            absfilename = os.path.join(dirname, filename);
-            result      = None;
+            absfilename = os.path.join(dirname, filename)
+            result = None
 
-            # on énumère la liste des dossiers et fichiers contenus
-            # dans le dossier courant (dirname)
+            # we list the folders and files contained
+            # in the current folder (dirname)
             if os.path.exists(dirname):
-                filenames = os.listdir(dirname);
+                filenames = os.listdir(dirname)
                 for f in filenames:
-                    absf = os.path.join(dirname, f);
+                    absf = os.path.join(dirname, f)
 
-                    # pour chaque nom de fichier trouvé
-                    # on le compare au fichier recherché
+                    # for each file name found
+                    # it is compared to the file searched
                     if str(absfilename) == str(absf):
-                        # le fichier recherché est trouvé, alors on crée l'instance 
-                        # de la classe spécifiée
-                        return getfile(f, fclass, dirname);
+                        # the file you are looking for is found, 
+                        # then you create the instance 
+                        # of the specified class
+                        return getfile(f, fclass, dirname)
                     elif os.path.isfile(absf):
-                        # dans le cas où il s'agit d'un fichier, alors
-                        # on continue la recherche.
-                        continue;
+                        # if it is a file, then
+                        # we continue the search.
+                        continue
                     else:
-                        # dans ce cas, il s'agit d'un dossier
-                        # donc on appel encore la fonction
-                        result = find(filename, fclass, absf);
+                        # in this case, it is a folder
+                        # so we call again the function
+                        result = find(filename, fclass, absf)
                         if not result:
-                            # si il n'y a aucun résultat, alors
-                            # on continue la recherche
-                            continue;
+                            # if there are no results, then
+                            # we continue the search
+                            continue
                         else:
-                            # s'il y a un résultat est trouvé, alors
-                            # on arrête la recherche et on retourne
-                            # le résultat
-                            return result;
+                            # if a result is found, then
+                            # stop the search and return
+                            # the result
+                            return result
 
 
 def get_file_uploaded(file_uploaded, FileModel, filedir=''):
     """
-    Fonction de recuperation d'un fichier uploadee.
+    Function to retrieve an uploaded file.
     """
     # info(request.FILES);
     if file_uploaded:
-        instance = FileModel(name=str(file_uploaded), filedir=filedir).touch();
-        moved    = handle_uploaded_file(file_uploaded, instance.filepath);
+        instance = FileModel(name=str(file_uploaded), filedir=filedir).touch()
+        moved = handle_uploaded_file(file_uploaded, instance.filepath)
         if moved:
-            info(file_uploaded);
-            info(file_uploaded.content_type);
-            ctsplited = file_uploaded.content_type.split('/');
+            info(file_uploaded)
+            info(file_uploaded.content_type)
+            ctsplited = file_uploaded.content_type.split('/')
             if len(ctsplited) >= 2:
-                instance.ext = ctsplited[1];
-            return instance;
+                instance.ext = ctsplited[1]
+            return instance
         else:
-            erro("Moving of file uploaded is failed.");
-    return 0;
+            erro("Moving of file uploaded is failed.")
+    return 0
 
