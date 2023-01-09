@@ -3,7 +3,7 @@ import jwt
 import datetime as dt
 from django.contrib.auth.models import User
 from django.conf import settings
-from .       import FSDIR
+from . import FSDIR
 from .models import File
 from .utils  import *
 

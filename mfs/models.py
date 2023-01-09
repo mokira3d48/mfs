@@ -7,8 +7,13 @@ from .utils import *
 
 
 class File(models.Model):
-    """
-    Model DB abstract of a file
+    """Model DB abstract of a file.
+    
+    Attributs:
+        created_at (datetime):
+        updated_at (datetime):
+        visibility (int):
+        
     """
     DEFAULT_DIR_NAME = None
     DEFAULT_FILE_EXT = None
@@ -37,47 +42,36 @@ class File(models.Model):
         default=PUBLIC,
         verbose_name=_("Visibility / Access level")
     )
-    filedir = models.CharField(
-        max_length=255,
-        null=True,
-        blank=True,
-        verbose_name=_("Parent directory")
-    )
-    name = models.CharField(max_length=255, verbose_name=_("Name"))
     size = models.PositiveBigIntegerField(default=0,
                                           verbose_name=_("Size (byte)"))
-    ext = models.CharField(
+    path = models.TextField(
         max_length=255,
-        null=True,
-        blank=True,
-        verbose_name=_("Extension")
+        unique=True,
+        verbose_name=_("Path file")
     )
 
     class Meta:
-        unique_together = ('filedir', 'name', 'ext')
         abstract = True
-        ordering = ['name']
 
     @property
     def dirpath(self):
-        """ 
-        Returns the full path to the parent folder
-        of this file.
-        """
-        if self.filedir or self.DEFAULT_DIR_NAME:
-            if not self.filedir: self.filedir = self.DEFAULT_DIR_NAME
-            return os.path.join(FSDIR, self.filedir)
-        else:
-            return FSDIR
+        """str: Returns the full path to the parent folder of this file. """
+        return os.path.join(FSDIR, self.DEFAULT_DIR_NAME)
 
     @property
     def filepath(self):
-        """ Returns the full path to this file """
-        self._fix_filename()
-        return os.path.join(self.dirpath, self.name)
+        """str: Returns the full path to this file. """
+        return os.path.join(self.dirpath, self.path)
 
     def url(self, host='/'):
-        """ Function to build a URL to this file """
+        """Function to build a URL to this file.
+        
+        Args:
+            host (str): Base hostname URL.
+        
+        Returns:
+            str: return the access URL to this file.
+        """
         filedir = self.filedir or self.DEFAULT_DIR_NAME
         # fileext = self.ext     or self.DEFAULT_FILE_EXT;
         fileurl = FSURL[1:]
@@ -88,7 +82,7 @@ class File(models.Model):
         return f"{host}{fileurl}"
 
     def __init__(self, *args, **kwargs):
-        """ Constructor of the file model """
+        """Constructor of the file model """
         super(File, self).__init__(*args, **kwargs)
         self._instance = None
 
@@ -163,53 +157,6 @@ class File(models.Model):
                 printerr("This error is detected: {}".format(e.args[0]))
         return False
 
-    def read(self, *args, **kwargs):
-        """ Function to read a whole file """
-        if self._instance is not None:
-            try:
-                return self._instance.read(*args, **kwargs)
-            except Exception as e:
-                printerr("This error is detected: {}".format(e.args[0]))
-        else:
-            printerr(f"{self.name} is not open.")
-        return False
-
-    def readline(self, *args, **kwargs):
-        """ Function to read a line of data from a file """
-        if self._instance is not None:
-            try:
-                return self._instance.readline(*args, **kwargs)
-            except Exception as e:
-                printerr("This error is detected: {}".format(e.args[0]))
-        else:
-            printerr(f"{self.name} is not open.")
-            return False
-
-    def write(self, data):
-        """ Function of writing data to a file """
-        if self._instance is not None:
-            try:
-                self._instance.write(data)
-                return data
-            except Exception as e:
-                printerr("This error is detected: {}".format(e.args[0]))
-        else:
-            printerr(f"{self.name} is not open.")
-        return False
-
-    def close(self):
-        """ Function to close a file. """
-        if self._instance is not None:
-            try:
-                self._instance.close()
-                self._instance = None
-                return True
-            except Exception as e:
-                printerr("This error is detected: {}".format(e.args[0]))
-        else:
-            printerr(f"{self.name} is not open.")
-        return False
-
     def save(self, *args, **kwargs):
         """ 
         Function to save information about a file
@@ -240,3 +187,10 @@ class File(models.Model):
         """
         return f"{self.filepath}"
 
+
+class Folder(models.Model):
+    """Django model for managing directories.
+    
+    Args:
+        name (str): Folder name.
+        
