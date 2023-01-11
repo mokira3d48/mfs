@@ -1,4 +1,4 @@
-"""Model definition module 
+"""Model definition module
 
 """
 
@@ -26,9 +26,9 @@ class Folder(models.Model):
     PRIVATE = 0x02
     PUBLIC = 0x00
     VISIBILITIES = [
-        (PUBLIC, 'Public'),
-        (PROTECTED, 'Protected'),
-        (PRIVATE, 'Private')
+        (PUBLIC, _('Public')),
+        (PROTECTED, _('Protected')),
+        (PRIVATE, _('Private'))
     ]
 
     path = models.TextField(
@@ -87,8 +87,8 @@ class Folder(models.Model):
                                             self.DEFAULT_DIR_NAME,
                                             self.path)
                 else:
-                    raise PathNotDefinedError(
-                        ERRO + "The path of this folder ({}) is not defined."\
+                    raise PathNotDefinedError(ERRO\
+                        + "The path of this folder ({}) is not defined."\
                             .format(self.__class__.__name__)
                         )
             self._tmp = self.path
@@ -162,25 +162,57 @@ class Dir(Folder):
         verbose_name_plural = _("Directories")
         ordering = ['updated_at']
 
+    def exists(self):
+        """Function allows to check if this directory is exists.
+
+        Returns:
+            bool: Returns True, if this directory is exists
+                returns False, else.
+        """
+        return os.path.isdir(self.dirpath)
+
     def mkdir(self):
         """Function to create the fildir for this file.
 
         Returns:
-            bool: Returns True if the directory specified to `self.dirpath`.
-                Else, returns False.
+            bool: Returns True if the directory specified to
+            `self.dirpath`. Else, returns False.
         """
         if os.path.isdir(FSDIR):
             try:
-                # We check if the uploading directory is exists.
-                os.makedirs(self.dirpath)
-                print(SUCC + "Directory at -> {} is created."\
-                    .format(self.dirpath))
+                if not self.exists():
+                    os.makedirs(self.dirpath)
+                    print(SUCC + "Directory at -> {} is created."\
+                        .format(self.dirpath))
                 return True
             except Exception as e:
                 print(ERRO + "This error is detected: {}".format(e))
 
         print(ERRO + "The fs directory -> {} is not exists."\
             .format(FSDIR))
+        return False
+
+    def open(self, **kwargs):
+        """Function that is used to open this directory.
+
+        Args:
+            **kwargs: Additional keyword arguments.
+
+        Returns:
+            :obj:`list` of :obj:`str`: Returns the instance of open
+                directory.
+            bool: Returns False if the directory openning is field.
+        """
+        created = self.mkdir()
+        if created:
+            # If the dir is created, then we can open it.
+            if os.path.isdir(self.dirpath):
+                try:
+                    self._instance = os.listdir(self.dirpath)
+                    return self._instance
+                except Exception as e:
+                    print(ERRO + "{}: {}".format(e.__class__.__name__,
+                                                 str(e)))
         return False
 
     def save(self, *args, **kwargs):
@@ -217,7 +249,7 @@ class Dir(Folder):
         except Exception as e:
             print(ERRO + "Deleting error of {} directory."\
                 .format(self.dirpath))
-            print(ERRO + "Error type: [{}]: {}".format(e.__class__.__name__,
+            print(ERRO + "Error type [{}]: {}".format(e.__class__.__name__,
                                                        str(e)))
 
         print(ERRO + "Directory of {} is not exists.".format(self.dirpath))
@@ -237,7 +269,6 @@ class File(Folder):
         related_name='files',
         verbose_name=_('Parent directory')
         )
-
     size = models.PositiveBigIntegerField(null=True,
                                           verbose_name=_("Size (byte)"))
 
@@ -247,9 +278,19 @@ class File(Folder):
     @property
     def filepath(self):
         """str: Returns the full path to this file. """
-        self.path = self.path[1:] if self.path.startswith('/')\
-            else self.path
-        return os.path.join(self.dirpath, self.path)
+        if not self._tmp:
+            if not self.pk:
+                if self.path:
+                    if self.path.startswith('/'):
+                        self.path = self.path[1:]
+                    self.path = os.path.join(self.dirpath, self.path)
+                else:
+                    raise PathNotDefinedError(ERRO\
+                        + "The path of this folder ({}) is not defined."\
+                            .format(self.__class__.__name__)
+                        )
+            self._tmp = self.path
+        return self._tmp
 
     def mkdir(self):
         """Function to create the fildir for this file.
@@ -297,7 +338,7 @@ class File(Folder):
                 f.close()
                 print(SUCC + "File at -> {} is created."\
                     .format(self.filepath))
-                return self
+            return self
         return False
 
     def exists(self):
@@ -306,7 +347,7 @@ class File(Folder):
         Returns:
             bool: Returns True if this file is exists.
         """
-        return os.path.exists(self.path)
+        return os.path.exists(self.filepath)
 
     def open(self,  mode='rt'):
         """Function to open a file.
@@ -318,14 +359,13 @@ class File(Folder):
             IOBase: Returns the instance of open file.
             bool: Returns False if the file openning is field.
         """
-        if type(self.filepath) is str:
-            try:
-                isfile = self.touch()
-                if isfile:
-                    self._instance = open(self.filepath, mode)
-                    return self._instance
-            except Exception as e:
-                print(ERRO + "This error is detected: {}".format(e))
+        try:
+            isfile = self.touch()
+            if isfile:
+                self._instance = open(self.filepath, mode)
+                return self._instance
+        except Exception as e:
+            print(ERRO + "This error is detected: {}".format(e))
         return False
 
     def save(self, *args, **kwargs):

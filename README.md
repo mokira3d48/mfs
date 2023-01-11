@@ -69,8 +69,13 @@ pip install Markdown==3.3.6
 
 ```python
 # MFS settings :
-FSDIR = os.path.join(BASE_DIR, "fsdir");    # Definition of root directory of server files.
-FSURL = "/file/";                           # Definition of global URL for file management.
+MIDNIGHT_FILE_SYSTEM = {
+    # Definition of root directory of server files.
+    'BASE_DIR': os.path.join(BASE_DIR, "fsdir"),
+
+    # Definition of global URL for file management.
+    'BASE_URL': '/file/',
+}
 
 ```
 
