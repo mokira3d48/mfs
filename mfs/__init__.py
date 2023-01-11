@@ -4,6 +4,12 @@ from .utils import *
 # from .core  import *
 
 
+# constantes d'etat
+ERRO = '[ \033[91mERRO\033[0m ]  '
+WARN = '[ \033[93mWARN\033[0m ]  '
+INFO = '[ \033[94mINFO\033[0m ]  '
+SUCC = '[ \033[32mSUCC\033[0m ]  '
+
 FSDIR = None
 FSURL = None
 
