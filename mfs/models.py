@@ -22,19 +22,16 @@ class Folder(models.Model):
         path (str): The file path.
     """
     DEFAULT_DIR_NAME = ''
-    PROTECTED = 0x01
-    PRIVATE = 0x02
-    PUBLIC = 0x00
+    PROTECTED = 'O'
+    PRIVATE = 'I'
+    PUBLIC = 'B'
     VISIBILITIES = [
         (PUBLIC, _('Public')),
         (PROTECTED, _('Protected')),
         (PRIVATE, _('Private'))
     ]
 
-    path = models.TextField(
-        unique=True,
-        verbose_name=_("Path file")
-    )
+    path = models.TextField(unique=True, verbose_name=_("Path file"))
     created_at = models.DateTimeField(
         auto_now_add=True,
         editable=False,
@@ -44,7 +41,8 @@ class Folder(models.Model):
         auto_now=True,
         verbose_name=_("Updating date")
     )
-    visibility = models.PositiveIntegerField(
+    visibility = models.CharField(
+        max_length=1,
         choices=VISIBILITIES,
         default=PUBLIC,
         verbose_name=_("Visibility / Access level")
@@ -70,29 +68,16 @@ class Folder(models.Model):
         return self._instance
 
     @property
-    def dirpath(self):
-        """str: Returns the full path to the parent folder of this file. """
-        # if self.path.find(FSDIR) == -1:
-        if not self._tmp:
-            if not self.pk:
-                if self.path:
-                    dir_name = self.DEFAULT_DIR_NAME
-                    if dir_name.startswith('/'):
-                        self.DEFAULT_DIR_NAME = dir_name[1:]
-
-                    if self.path.startswith('/'):
-                        self.path = self.path[1:]
-
-                    self.path = os.path.join(FSDIR, 
-                                            self.DEFAULT_DIR_NAME,
-                                            self.path)
-                else:
-                    raise PathNotDefinedError(ERRO\
-                        + "The path of this folder ({}) is not defined."\
-                            .format(self.__class__.__name__)
-                        )
-            self._tmp = self.path
-        return self._tmp
+    def abspath(self):
+        """str: Returns the full path to the parent folder of this. """
+        return os.path.join(FSDIR, self.path)
+    
+    @classmoethod
+    def get_default_dir_name(cls):
+        dir_name = self.DEFAULT_DIR_NAME
+        if dir_name.startswith('/'):
+            dir_name = dir_name[1:]
+        return dir_name
 
     def exists(self):
         """Function to check if this file is exists.
@@ -169,7 +154,7 @@ class Dir(Folder):
             bool: Returns True, if this directory is exists
                 returns False, else.
         """
-        return os.path.isdir(self.dirpath)
+        return os.path.isdir(self.abspath)
 
     def mkdir(self):
         """Function to create the fildir for this file.
@@ -178,6 +163,7 @@ class Dir(Folder):
             bool: Returns True if the directory specified to
             `self.dirpath`. Else, returns False.
         """
+        '''
         if os.path.isdir(FSDIR):
             try:
                 if not self.exists():
@@ -187,10 +173,44 @@ class Dir(Folder):
                 return True
             except Exception as e:
                 print(ERRO + "This error is detected: {}".format(e))
-
-        print(ERRO + "The fs directory -> {} is not exists."\
-            .format(FSDIR))
+        else:
+            print(ERRO + "The fs directory -> {} is not exists."\
+                .format(FSDIR))
         return False
+        '''
+        if os.path.isdir(FSDIR):
+            path = self.path
+            if path.startswith('/'):
+                path = path[1:]
+
+            relpath = os.path.join(self.get_default_dir_name(), path)
+            path = relpath
+            try:
+                if path.endswith('/'):
+                    path = path[:-1]
+
+                path_split = path.split('/')
+                directory = None
+                subdirectory = None
+                rel_string_path = ''
+                for dirname in path_split[:-1]:
+                    rel_string_path += os.path.join(dirname, '')
+                    abs_string_path = os.path.join(FSDIR, rel_string_path)
+                    os.makedirs(abs_string_path)
+                    subdirectory = Dir(path=rel_string_path)
+                    subdirectory.save()
+                    if directory:
+                        directory.subdirectories.add(subdirectory)
+                        directory.save()
+                        directory = subdirectory
+                
+                abs_string_path = os.path.join(FSDIR, path)
+                os.makedirs(abs_string_path)
+                self.parent_dir = directory
+                self.path = relpath
+                return self
+            except Exception as e:
+                print(ERRO + "This error is detected: {}".format(e))
 
     def open(self, **kwargs):
         """Function that is used to open this directory.
@@ -225,8 +245,8 @@ class Dir(Folder):
             *args: Variable length arguments list.
             **kwargs: Additional keyword arguments.
         """
-        created = self.mkdir()
-        if created:
+        is_exists = self.exists()
+        if is_exists:
             return super(Dir, self).save(*args, **kwargs)
 
         print(ERRO + "Unable to save this directory at -> {} !"\
@@ -254,6 +274,53 @@ class Dir(Folder):
 
         print(ERRO + "Directory of {} is not exists.".format(self.dirpath))
         return False
+    
+    def _add(self, x):
+        """Function to add a folder into this directory.
+
+        Args:
+            x (:obj:`Folder`): The folder will be added into this
+                directory.
+        """
+        if issubclass(x.__class__, Folder):
+            if isinstance(x, Dir):
+                self.subdirectories.add(x)
+            elif isinstance(x, File):
+                self.files.add(x)
+    
+    def __truediv__(self, f):
+        """ Function of / operator.
+
+        This function will be called when we make the following operation
+        example: dir1 = dir1 / file1 or dir1 = dir1 / "my_folder_path"
+        
+        Args:
+            f (mixed): Represent the folder path or folder instance.
+        
+        Returns:
+            Dir: Returns this directory instance.
+        """
+        try:
+            if type(f) is str:
+                # if the specified folder is a string
+                folder_path = f
+                if f.find(FSDIR) == -1:
+                    folder_path = os.path.join(FSDIR, f)
+
+                if os.path.isdir(folder_path):
+                    folder = Dir(path=folder_path)
+                    folder.save()
+                    self._add(folder)
+                elif os.path.isfile(folder_path):
+                    filei = File(path=folder_path)
+                    filei.save()
+                    self._add(filei)
+            else:
+                self._add(f)
+        except Exception as error:
+            print(ERRO + "Error type [{}]: {}".format(e.__class__.__name__,
+                                                       str(e)))
+        return self
 
 
 class File(Folder):
@@ -279,16 +346,15 @@ class File(Folder):
     def filepath(self):
         """str: Returns the full path to this file. """
         if not self._tmp:
-            if not self.pk:
-                if self.path:
-                    if self.path.startswith('/'):
-                        self.path = self.path[1:]
-                    self.path = os.path.join(self.dirpath, self.path)
-                else:
-                    raise PathNotDefinedError(ERRO\
-                        + "The path of this folder ({}) is not defined."\
-                            .format(self.__class__.__name__)
-                        )
+            if self.path:
+                if self.path.startswith('/'):
+                    self.path = self.path[1:]
+                self.path = os.path.join(self.dirpath, self.path)
+            else:
+                raise PathNotDefinedError(ERRO\
+                    + "The path of this folder ({}) is not defined."\
+                        .format(self.__class__.__name__)
+                    )
             self._tmp = self.path
         return self._tmp
 
@@ -313,7 +379,7 @@ class File(Folder):
                 # Creating and saving the dir into database.
                 parent_dir = Dir(path=self.dirpath)
                 parent_dir.save()
-            except Exception as e
+            except Exception as e:
                 print(ERRO + "This error is detected: {}".format(e))
             return True
         else:

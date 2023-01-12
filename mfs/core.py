@@ -4,7 +4,9 @@ import datetime as dt
 from django.contrib.auth.models import User
 from django.conf import settings
 from . import FSDIR
+from . import ERRO, INFO, SUCC
 from .models import File
+from .models import Dir
 from .utils  import *
 
 
@@ -177,13 +179,17 @@ def find(filename, fclass, dirname=FSDIR):
                             return result
 
 
-def get_file_uploaded(file_uploaded, FileModel, filedir=''):
-    """
-    Function to retrieve an uploaded file.
+def get_file_uploaded(file_uploaded, file_model, filedir=''):
+    """Function to retrieve an uploaded file.
+    
+    Args:
+        file_uploaded (mixed): File uploaded info.
+        file_model (:class:`mfs.models.File`): The subclass of a File.
+        filedir
     """
     # info(request.FILES);
     if file_uploaded:
-        instance = FileModel(name=str(file_uploaded), filedir=filedir).touch()
+        instance = file_model(path=str(file_uploaded)).touch()
         moved = handle_uploaded_file(file_uploaded, instance.filepath)
         if moved:
             info(file_uploaded)
@@ -193,6 +199,6 @@ def get_file_uploaded(file_uploaded, FileModel, filedir=''):
                 instance.ext = ctsplited[1]
             return instance
         else:
-            erro("Moving of file uploaded is failed.")
+            print(ERRO + "Moving of file uploaded is failed.")
     return 0
 
