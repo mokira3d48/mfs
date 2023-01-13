@@ -4,7 +4,7 @@ from .exceptions import PathNotDefinedError
 
 def get_hostname() -> str:
     """ Function that is used to retreive the host name.
-    
+
     Returns:
         The host name.
     """
@@ -15,16 +15,18 @@ def get_hostname() -> str:
 
 
 def handle_uploaded_file(f, absfilepath):
-    """
+    """Function of handling the uploaded file.
+
     Function to copy data from an uploaded file in a file created 
     in binary read/write mode in the file system of the server.
 
     Args:
-        + f             [UploadedFile]  Une instance du fichier uploadé.
-        + absfilepath   [str]           Le chemin absolue vers le fichier de destination.
-    :return:
-        [bool]  Retourne False en cas d'erreur
-                Retourne True en cas de succès
+        f (:obj:`UploadedFile`): An instance of uploaded file.
+        absfilepath (str): The absolute path to the destination file.
+
+    Returns:
+        bool: Returns False on error
+            Returns True if successful.
     """
     try:
         # opening the file in binary read/write mode
@@ -33,11 +35,10 @@ def handle_uploaded_file(f, absfilepath):
             for chunk in f.chunks():
                 filedest.write(chunk)
 
-            """
-            By looping over UploadedFile.chunks() instead of calling read(),
-            we can make sure that large files do not saturate
-            the system memory.
-            """
+            # By looping over UploadedFile.chunks() instead of 
+            # calling read(), we can make sure that large files 
+            # do not saturate the system memory.
+
         return True
     except Exception as e:
         # In case of error, we display the error and 
