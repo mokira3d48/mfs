@@ -1,7 +1,13 @@
 import socket
+from .exceptions import PathNotDefinedError
 
 
-def get_hostname():
+def get_hostname() -> str:
+    """ Function that is used to retreive the host name.
+    
+    Returns:
+        The host name.
+    """
     try:
         return socket.gethostname()
     except:

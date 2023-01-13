@@ -10,6 +10,39 @@ from .models import Dir
 from .utils  import *
 
 
+def try_to_exec():
+    """Try to execute.
+
+    Function that is used to try to execute
+    a decorated function.
+
+    Returns:
+        callable: Returns a customised function with try..catch
+            close.
+    """
+    def inner(f):
+        def wrapper(*args, **kwargs):
+            """ The wrapping function.
+
+            Args:
+                *args: Variable length arguments list.
+                **kwargs: Additional keyword arguments.
+
+            Returns:
+                mixed: We return the function return.
+            """
+            try:
+                return f(*args, **kwargs)
+            except PathNotDefinedError as e:
+                raise e
+            except Exception as e:
+                print(ERRO + "Error type [{}]: {}".\
+                    format(e.__class__.__name__, str(e)))
+
+        return wrapper
+    return inner
+
+
 def hasperm(file: File, user):
     """ Function of checking the user permissions.
     
@@ -22,14 +55,14 @@ def hasperm(file: File, user):
             then this function return True. Overrise, it returns False.
     """
     if file.visibility == File.PUBLIC:
-        printinfo("Public file recovering ...")
+        print(INFO + "Public file recovering ...")
         return True
     elif file.visibility == File.PROTECTED:
-        printinfo("Protected file recovering ...")
-        printinfo(f"User info {user}")
+        print(INFO + "Protected file recovering ...")
+        print(INFO + f"User info {user}")
         return user.is_authenticated and user.has_perm('mfs.download', file)
     else:
-        printinfo("Private file recovering ...")
+        print(INFO + "Private file recovering ...")
         return user.is_authenticated\
                 and (user.is_staff or user.is_superuser)\
                 and user.has_perm('mfs.download', file)
@@ -123,11 +156,7 @@ def getfile(filename, fclass, dirname=FSDIR):
             # we then instantiate a new object of type fclass
             # to contain the information about the latter
             instance = fclass()
-            dirn = os.path.dirname(filename)
-            instance.filedir = dirn if dirn else dirname
-            filenamext = (os.path.basename(filename)).split('.')
-            instance.name = filenamext[0]
-            instance.ext = filenamext[1] if len(filenamext) > 1 else ''
+            instance.path = filename
             instance.size = os.path.getsize(abspath)
             return instance
 

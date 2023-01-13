@@ -8,8 +8,9 @@ from django.db import models
 from . import FSDIR
 from . import FSURL
 from . import ERRO, SUCC, INFO
-from .utils import *
+from .utils import try_to_exec
 from .exceptions import PathNotDefinedError
+from .exceptions import FolderConcatenationError
 
 
 class Folder(models.Model):
@@ -74,7 +75,8 @@ class Folder(models.Model):
         if not self._path:
             dirname = self.get_default_dir_name()
             rel_path_split = self.relpath.split(dirname)
-            self._path = rel_path_split[1]
+            self._path = rel_path_split[1] if len(rel_path_split) > 1\
+                else rel_path_split[0]
         return self._path
 
     @path.setter
@@ -85,7 +87,7 @@ class Folder(models.Model):
     def abspath(self):
         """str: Returns the full path to the parent folder of this. """
         if not self.relpath:
-            raise ValueError(
+            raise PathNotDefinedError(
                 ERRO + "The path of this directory is not defined."
                 " You can define it using set_path() function or"
                 " my_dir.path = 'your_relative_path'."
@@ -99,28 +101,28 @@ class Folder(models.Model):
         if dir_name.startswith('/'):
             dir_name = dir_name[1:]
         return dir_name
-    
+
     def set_path(self, value: str) -> str:
         """Function that is used to set path of this folder.
-        
+
         Args:
             value: The path string value.
-        
+
         Returns:
             The same value processed.
 
         Raises:
-            ValueError: The path string value is None.
+            PathNotDefinedError: The path string value is None.
         """
         if value is None:
-            raise ValueError(
+            raise PathNotDefinedError(
                 ERRO + "The path string value must not be None")
 
         value = value.strip()
         if value != '':
             if value.startswith('/'):
                 value = value[1:]
-            
+
             self_ddr = self.get_default_dir_name()
             self.relpath = os.path.join(self_ddn, value)
             return value
@@ -135,10 +137,11 @@ class Folder(models.Model):
         Returns:
             bool: Returns True if this file is exists.
         """
-        raise NotImplemented(
-            INFO + "This function must be implemented in the subclasss"
-            " and must return an boolean value."
-            )
+        # raise NotImplemented(
+        #    INFO + "This function must be implemented in the subclasss"
+        #    " and must return an boolean value."
+        #    )
+        return os.path.exists(self.abspath)
 
     def open(self,  **kwargs):
         """Function of folder openning.
@@ -198,39 +201,42 @@ class Dir(Folder):
         """Function allows to check if this directory is exists.
 
         Returns:
-            bool: Returns True, if this directory is exists
+            bool: Returns True, if this directory is exists,
                 returns False, else.
+
+        Raises:
+            ValueError: The `path` string value is None.
         """
         return os.path.isdir(self.abspath)
 
+    @try_to_exec()
     def mkdir(self):
         """Function to create the directory in server file system.
 
         Returns:
-            bool: Returns True if the directory specified to `self.dirpath`.
-                Else, returns False.
+            bool: Returns True if the directory specified to 
+            `self.dirpath`. Else, returns False.
+
+        Raises:
+            ValueError: The `path` string value is None.
         """
         if os.path.isdir(FSDIR):
-            try:
-                if not self.exists():
-                    # We check if the uploading directory is exists.
-                    os.makedirs(self.abspath)
-                    print(SUCC + "Directory at -> {} is created."\
-                        .format(self.relpath))
+            if not self.exists():
+                # We check if the uploading directory is exists.
+                os.makedirs(self.abspath)
+                print(SUCC + "Directory at -> {} is created."\
+                    .format(self.relpath))
 
-                print(INFO + "Directory at -> {} is already exists."\
-                        .format(self.relpath))
-                return True
-            except ValueError as e:
-                raise e
-            except Exception as e:
-                print(ERRO + "This error is detected: {}".format(e))
+            print(INFO + "Directory at -> {} is already exists."\
+                    .format(self.relpath))
+            return True
         else:
             print(ERRO + "The fs directory -> {} is not exists."\
                 .format(FSDIR))
 
         return False
 
+    @try_to_exec()
     def open(self, **kwargs):
         """Function that is used to open this directory.
 
@@ -241,18 +247,16 @@ class Dir(Folder):
             :obj:`list` of :obj:`str`: Returns the instance of open
                 directory.
             bool: Returns False if the directory openning is field.
+
+        Raises:
+            ValueError: The `path` string value is None.
         """
         if self.exists():
-            try:
-                self._instance = os.listdir(self.abspath)
-                return self._instance
-            except ValueError as e:
-                raise e
-            except Exception as e:
-                print(ERRO + "{}: {}".format(e.__class__.__name__,
-                                                str(e)))
+            self._instance = os.listdir(self.abspath)
+            return self._instance
         return False
 
+    @try_to_exec()
     def save(self, *args, **kwargs):
         """Function of directory model saving.
 
@@ -262,61 +266,47 @@ class Dir(Folder):
         Args:
             *args: Variable length arguments list.
             **kwargs: Additional keyword arguments.
+        
+        Raises:
+            ValueError: The `path` string value is None.
         """
         created = self.mkdir()
         if created:
             return super(Dir, self).save(*args, **kwargs)
-        else:
-            print(ERRO + "Unable to save this directory at -> {} !"\
-                .format(self.relpath))
 
+        print(ERRO + "Unable to save this directory at -> {} !"\
+            .format(self.relpath))
+
+    @try_to_exec()
     def delete(self):
         """Function to delete a file.
 
         Returns:
             bool: Returns True if this file is removed.
                 Else, returns False.
+
+        Raises:
+            ValueError: The `path` string value is None.
         """
-        try:
-            if self.exists():
-                os.rmdir(self.abspath)
-                self.delete()
-                print(SUCC + "Directory at -> {} is deleted."\
-                    .format(self.relpath))
-                return True
-        except ValueError as e:
-            raise e
-        except Exception as e:
-            print(ERRO + "Deleting error of {} directory."\
+        if self.exists():
+            os.rmdir(self.abspath)
+            self.delete()
+            print(SUCC + "Directory at -> {} is deleted."\
                 .format(self.relpath))
-            print(ERRO + "Error type [{}]: {}".format(e.__class__.__name__,
-                                                       str(e)))
+            return True
 
         print(ERRO + "Directory of {} is not exists.".format(self.relpath))
         return False
 
-    def _add(self, x):
-        """Function to add a folder into this directory.
-
-        Args:
-            x (:obj:`Folder`): The folder will be added into this
-                directory.
-        """
-        if issubclass(x.__class__, Folder):
-            if isinstance(x, Dir):
-                self.subdirectories.add(x)
-            elif isinstance(x, File):
-                self.files.add(x)
-
     def __truediv__(self, f):
-        """ Function of / operator.
+        """Function of / operator.
 
         This function will be called when we make the following operation
         example: dir1 = dir1 / file1 
             or dir1 = dir1 / "my_folder_path"
 
         Args:
-            f (mixed): Represent the folder path or folder instance.
+            f (mixed): Represents the folder path or folder instance.
 
         Returns:
             Dir: Returns this directory instance.
@@ -329,33 +319,70 @@ class Dir(Folder):
                 ERRO + "{} must be a string or a folder type.".format(str(f))
             )
 
-        resulting_dir = Dir()
-        self_ddn = self.get_default_dir_name()
+        self_relpath = self.relpath
+        if not self_relpath:
+            raise PathNotDefinedError(
+                ERRO + "The path of this directory is not defined."
+                " You can define it using set_path() function or"
+                " my_dir.path = 'your_relative_path'."
+                )
 
         # If the argument is a string, then the following
         # string processing is done:
         if type(f) is str:
-            # If at the beginning of the string we have
-            # the character '/' then we do a merge.
-            # Otherwise, we do a concatenation.
-            if f.startswith('/'):
-                self_path = None
+            if f != '':
+                path = ''  # The variable will contains the final path.
 
-        return self
-    
+                # If at the beginning of the string we have
+                # the character '/' then we do a merge.
+                # Otherwise, we do a concatenation.
+                if f.startswith('/'):
+                    startedwith = bool(f[1:].startswith(self_relpath))
+                    if not startedwith:
+                        raise FolderConcatenationError(
+                            ERRO + "Unable to concatenate the following"
+                            " two paths: {} and {}".format(self_relpath, f)
+                        )
+
+                    path = f
+                else:
+                    path = os.path.join(self_relpath, f)
+
+                # If f ends in '/' then it is a folder,
+                # otherwise it is considered a file.
+                folder = None
+                if f.endswith('/'):
+                    folder = Dir(path=f)
+                else:
+                    folder = File(path=f)
+                return folder
+            else:
+                # If the string to concatenate is empty then a new folder 
+                # with the path to that folder is returned.
+                return Dir(path=self.path)
+
+
     def __iadd__(self, f: Folder):
         """Implementation of += operator
-        
+
         This function allows to add a file or directory 
         into this directory.
-        
+
         Args:
             f (:obj:`Folder`): The folder will be added to this directory.
-        
+
         Returns:
             Dir: Returns the instance of this directory.
+
+        Raises:
+            ValueError: The `path` string value is None.
         """
-        pass
+        if issubclass(x.__class__, Folder):
+            if isinstance(x, Dir) and hasattr(self, 'subdirectories'):
+                self.subdirectories.add(x)
+            elif isinstance(x, File) and hasattr(self, 'files'):
+                self.files.add(x)
+            return self
 
 
 class File(Folder):
@@ -378,50 +405,36 @@ class File(Folder):
         abstract = True
 
     @property
-    def filepath(self):
-        """str: Returns the full path to this file. """
-        if not self._tmp:
-            if self.path:
-                if self.path.startswith('/'):
-                    self.path = self.path[1:]
-                self.path = os.path.join(self.dirpath, self.path)
-            else:
-                raise PathNotDefinedError(ERRO\
-                    + "The path of this folder ({}) is not defined."\
-                        .format(self.__class__.__name__)
-                    )
-            self._tmp = self.path
-        return self._tmp
+    def parent_dir_path(self):
+        """str: Returns the absolute path of the parent directory
+            of this file. """
+        return os.path.split(self.abspath)[0]
 
-    def mkdir(self):
+    @try_to_exec()
+    def _mkdir(self):
         """Function to create the fildir for this file.
 
         Returns:
-            bool: Returns True if the directory specified to `self.dirpath`.
-                Else, returns False.
+            bool: Returns True if the directory specified 
+                to `self.dirpath`. Else, returns False.
+
+        Raises:
+            ValueError: The `path` string value is None.
         """
         if os.path.isdir(FSDIR):
-            try:
-                # We check if the uploading directory is exists.
-                os.makedirs(self.dirpath)
+            # We check if the parent directory is exists.
+            # If it's not exists, then create it.
+            if not os.path.exists(self.parent_dir_path):
+                os.makedirs(self.parent_dir_path)
                 print(SUCC + "Directory at -> {} is created."\
-                    .format(self.dirpath))
-            except Exception as e:
-                print(ERRO + "This error is detected: {}".format(e))
-                return False
-
-            try:
-                # Creating and saving the dir into database.
-                parent_dir = Dir(path=self.dirpath)
-                parent_dir.save()
-            except Exception as e:
-                print(ERRO + "This error is detected: {}".format(e))
+                    .format(self.parent_dir_path))
             return True
         else:
-            print(ERRO + "The fs directory -> {} is not exists."\
+            print(INFO + "The fs directory -> {} is not exists."\
                 .format(FSDIR))
             return False
 
+    @try_to_exec()
     def touch(self):
         """Function to create this file in the dirpath.
 
@@ -429,16 +442,19 @@ class File(Folder):
             File: Returns the instance of this file, if this
                 file is created successfully.
             bool: Returns False, if creation of this file is failed.
+
+        Raises:
+            ValueError: The `path` string value is None.
         """
         # Create dir if not exists.
-        created = self.mkdir()
+        created = self._mkdir()
         if created:
-            # if the dir is created, then we can create this file.
-            if not os.path.isfile(self.filepath):
-                f = open(self.filepath, 'x')
+            # If the dir is created, then we can create this file.
+            if not os.path.isfile(self.abspath):
+                f = open(self.abspath, 'x')
                 f.close()
                 print(SUCC + "File at -> {} is created."\
-                    .format(self.filepath))
+                    .format(self.abspath))
             return self
         return False
 
@@ -447,9 +463,13 @@ class File(Folder):
 
         Returns:
             bool: Returns True if this file is exists.
-        """
-        return os.path.exists(self.filepath)
 
+        Raises:
+            ValueError: The `path` string value is None.
+        """
+        return os.path.isfile(self.abspath)
+
+    @try_to_exec()
     def open(self,  mode='rt'):
         """Function to open a file.
 
@@ -459,16 +479,17 @@ class File(Folder):
         Returns:
             IOBase: Returns the instance of open file.
             bool: Returns False if the file openning is field.
+        
+        Raises:
+            ValueError: The `path` string value is None.
         """
-        try:
-            isfile = self.touch()
-            if isfile:
-                self._instance = open(self.filepath, mode)
-                return self._instance
-        except Exception as e:
-            print(ERRO + "This error is detected: {}".format(e))
+        isfile = self.touch()
+        if isfile:
+            self._instance = open(self.abspath, mode)
+            return self._instance
         return False
 
+    @try_to_exec()
     def save(self, *args, **kwargs):
         """Function of file model saving.
 
@@ -478,36 +499,37 @@ class File(Folder):
         Args:
             *args: Variable length arguments list.
             **kwargs: Additional keyword arguments.
+
+        Raises:
+            ValueError: The `path` string value is None.
         """
         created = self.touch()
         if created:
             # We calculate file size before to save its data
             # into database.
-            self.size = os.path.getsize(self.filepath)
+            self.size = os.path.getsize(self.abspath)
             return super(File, self).save(*args, **kwargs)
 
         print(ERRO + "Unable to save this file at -> {} !"\
-            .format(self.filepath))
+            .format(self.relpath))
 
+    @try_to_exec()
     def delete(self):
         """Function to delete a file.
 
         Returns:
             bool: Returns True if this file is removed.
                 Else, returns False.
-        """
-        try:
-            if self.exists():
-                os.remove(self.filepath)
-                self.delete()
-                print(SUCC + "File at -> {} is deleted."\
-                    .format(self.filepath))
-                return True
-        except Exception as e:
-            print(ERRO + "Deleting error of {} file.".format(self.filepath))
-            print(ERRO + "Error type: [{}]: {}".format(e.__class__.__name__,
-                                                   str(e)))
 
-        print(ERRO + "File of {} is not exists.".format(self.filepath))
+        Raises:
+            ValueError: The `path` string value is None.
+        """
+        if self.exists():
+            os.remove(self.abspath)
+            self.delete()
+            print(SUCC + "File at -> {} is deleted.".format(self.relpath))
+            return True
+        else:
+            print(INFO + "File of {} is not exists.".format(self.relpath))
         return False
 
