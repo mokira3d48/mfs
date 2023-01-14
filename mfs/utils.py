@@ -41,8 +41,7 @@ def handle_uploaded_file(f, absfilepath):
 
         return True
     except Exception as e:
-        # In case of error, we display the error and 
-        # return False
+        # In case of error, we display the error and return False
         print(f"[ERR]\t {e}")
         return False
 
