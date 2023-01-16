@@ -1,10 +1,12 @@
 import re
+import logging as log
 import jwt
 from django.conf import settings
 from rest_framework.response import Response
 from rest_framework.renderers import JSONRenderer
 from .utils import *
 from . import FSURL
+from . import ERRO, SUCC, INFO
 
 
 class FileAccessMiddleware:
@@ -15,13 +17,14 @@ class FileAccessMiddleware:
     def __call__(self, request):
         # Code to be executed for each request before
         # the view (and later middleware) are called.
+
         # token = jwt.encode(
         #    {'user' : usr, 
         #     'exp' : dt.datetime.utcnow() + dt.timedelta( minutes=2 ) 
         #     },
         #    settings.SECRET_KEY, algorithm='HS256')
-        absuri  = request.build_absolute_uri()
-        mfsuri  = request.build_absolute_uri(FSURL)
+        absuri = request.build_absolute_uri()
+        mfsuri = request.build_absolute_uri(FSURL)
         is_furl = re.match(f"^{mfsuri}", absuri)
 
         if not is_furl:
@@ -29,10 +32,18 @@ class FileAccessMiddleware:
             # printinfo(is_furl)
             return self.get_response(request)
         else:
-            printinfo(absuri)
+            log.debug(INFO + "{}".format(absuri))
             return self.__file_rec(request)
 
     def __file_rec(self, request):
+        """Function that is used to access a folder.
+
+        Args:
+            request (:obj:`HttpRequest`): The request received from client.
+
+        Returns:
+            HttpResponse: The response of the server.
+        """
         message = ''
         token = ''
         code = 200
@@ -43,14 +54,19 @@ class FileAccessMiddleware:
         elif 'F-Id' in request.headers:
             token = request.headers['F-Id']
         else:
+            log.debug(ERRO + "Error code 401 - Unauthorized.")
             message = "Oops !"
             code = 401
 
         try:
             if token:
-                data = jwt.decode(token, settings.SECRET_KEY, algorithms=['HS256'])
+                data = jwt.decode(token,
+                                  settings.SECRET_KEY,
+                                  algorithms=['HS256'])
+                log.debug(SUCC + "Middleware OK - Retreiving folder.")
                 return self.get_response(request)
         except:
+            log.debug(ERRO + "Error code 403 - Access denied.")
             message = "Access denied !"
             code = 403
 

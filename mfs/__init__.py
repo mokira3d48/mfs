@@ -31,7 +31,7 @@ else:
 
 if not os.path.isdir(FSDIR):
     os.mkdir(FSDIR)
-    print(SUCC + "{} is created.".format(FSDIR))
+    logging.debug(SUCC + "{} is created.".format(FSDIR))
 
 if not hasattr(settings, 'MIDNIGHT_FILE_SYSTEM')\
         and 'BASE_URL' not in settings.MIDNIGHT_FILE_SYSTEM:

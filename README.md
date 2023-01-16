@@ -68,6 +68,14 @@ pip install Markdown==3.3.6
 2. Write the following code source in `settings.py` of your Django project.
 
 ```python
+MIDDLEWARE = [
+    # ...
+
+    # If you want to check the access permissions to the folders,
+    # you must insert this middleware into MIDDLEWARES list.
+    "mfs.middlew.FileAccessMiddleware",
+]
+
 # MFS settings :
 MIDNIGHT_FILE_SYSTEM = {
     # Definition of root directory of server files.
