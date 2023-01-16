@@ -1,14 +1,24 @@
 import os
+import logging
 from django.conf import settings
 from .utils import *
 # from .core  import *
 
 
+# LOGGER_FORMAT = "[%(asctime)s %(msecs)03dms] %(message)s"
+# logging.basicConfig(format=LOGGER_FORMAT,
+#                    level=logging.INFO,
+#                    datefmt="%I:%M:%S")
+
 # Status constants
-ERRO = '[ \033[91mERRO\033[0m ]  '
-WARN = '[ \033[93mWARN\033[0m ]  '
-INFO = '[ \033[94mINFO\033[0m ]  '
-SUCC = '[ \033[32mSUCC\033[0m ]  '
+ERRO = ' \033[91mERRO\033[0m ] '
+WARN = ' \033[93mWARN\033[0m ] '
+INFO = ' \033[94mINFO\033[0m ] '
+SUCC = ' \033[32mSUCC\033[0m ] '
+
+logging.basicConfig(format='%(asctime)s %(message)s',
+                    level=logging.DEBUG,
+                    datefmt='[ %y-%m-%d  %H:%M:%S')
 
 FSDIR = None
 FSURL = None
