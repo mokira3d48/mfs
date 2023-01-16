@@ -9,7 +9,7 @@ from django.db import models
 from . import FSDIR
 from . import FSURL
 from . import ERRO, SUCC, INFO
-from .utils import try_to_exec
+from .exceptions import try_to_exec
 from .exceptions import PathNotDefinedError
 from .exceptions import FolderConcatenationError
 
@@ -108,7 +108,7 @@ class Folder(models.Model):
             dirname = self.DEFAULT_DIR_NAME.strip()
 
         return dirname\
-            if dirname.startedwith('/')\
+            if dirname.startswith('/')\
                 else "/{}".format(dirname)
 
     def set_path(self, value: str) -> str:
@@ -198,6 +198,7 @@ class Dir(Folder):
     parent_dir = models.ForeignKey(
         'Dir',
         on_delete=models.CASCADE,
+        null=True,
         related_name='subdirectories',
         verbose_name=_('Parent directory')
         )
@@ -219,7 +220,7 @@ class Dir(Folder):
         Raises:
             PathNotDefinedError: The path string value is None.
         """
-        path = self.set_path(value)
+        path = super(Dir, self).set_path(value)
         if type(path) is str and not path.endswith('/'):
             path = "{}/".format(path)
             self.relpath = "{}/".format(self.relpath)
@@ -254,9 +255,9 @@ class Dir(Folder):
                 os.makedirs(self.abspath)
                 log.debug(SUCC + "Directory at -> {} is created."\
                     .format(self.relpath))
-
-            log.debug(INFO + "Directory at -> {} is already exists."\
-                    .format(self.relpath))
+            else:
+                log.debug(INFO + "Directory at -> {} is already exists."\
+                        .format(self.relpath))
             return True
         else:
             log.debug(ERRO + "The fs directory -> {} is not exists."\
@@ -358,13 +359,13 @@ class Dir(Folder):
                 " my_dir.path = 'your_relative_path'."
                 )
 
-        if isinstance(f, File):
-            if not f.relpath:
-                raise PathNotDefinedError(
-                    ERRO + "The path of `f` file passed in argument"
-                    " is not defined."
-                    )
-            f = f.relpath
+        # if isinstance(f, File):
+        #    if not f.relpath:
+        #        raise PathNotDefinedError(
+        #            ERRO + "The path of `f` file passed in argument"
+        #            " is not defined."
+        #            )
+        #    f = f.relpath
 
         # If the argument is a string, then the following
         # string processing is done:
@@ -387,25 +388,29 @@ class Dir(Folder):
                 else:
                     path = os.path.join(self_relpath, f)
 
-                # If f ends in '/' then it is a folder,
-                # otherwise it is considered a file.
-                folder = None
-                if f.endswith('/'):
-                    folder = Dir(path=f)
-                else:
-                    folder = File(path=f)
-                return folder
+                if not path.endswith('/'):
+                    path = "{}/".format(path)
+                return Dir(path=path)
             else:
                 # If the string to concatenate is empty then a new folder 
                 # with the path to that folder is returned.
-                return Dir(path=self.path)
+                return Dir(path=self_relpath)
         elif isinstance(f, Dir):
             if not f.relpath:
                 raise PathNotDefinedError(
                     ERRO + "The path of `f` directory passed in argument"
                     " is not defined."
                     )
-            return os.path.join(self_relpath, f.relpath[1:])
+            path = os.path.join(self_relpath, f.relpath[1:])
+            return Dir(path)
+        elif isinstance(f, File):
+            if not f.relpath:
+                raise PathNotDefinedError(
+                    ERRO + "The path of `f` file passed in argument"
+                    " is not defined."
+                    )
+            path = os.path.join(self_relpath, f.relpath[1:])
+            return f.__class__(path)
 
 
     def __iadd__(self, f: Folder):
@@ -423,11 +428,11 @@ class Dir(Folder):
         Raises:
             ValueError: The `path` string value is None.
         """
-        if issubclass(x.__class__, Folder):
-            if isinstance(x, Dir) and hasattr(self, 'subdirectories'):
-                self.subdirectories.add(x)
-            elif isinstance(x, File) and hasattr(self, 'files'):
-                self.files.add(x)
+        if issubclass(f.__class__, Folder):
+            if isinstance(f, Dir) and hasattr(self, 'subdirectories'):
+                self.subdirectories.add(f)
+            elif isinstance(f, File) and hasattr(self, 'files'):
+                self.files.add(f)
             return self
 
 

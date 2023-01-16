@@ -24,7 +24,7 @@ FSDIR = None
 FSURL = None
 
 if not hasattr(settings, 'MIDNIGHT_FILE_SYSTEM')\
-        and 'BASE_DIR' not in settings.MIDNIGHT_FILE_SYSTEM:
+        or 'BASE_DIR' not in settings.MIDNIGHT_FILE_SYSTEM:
     FSDIR = os.path.join(settings.BASE_DIR, "fsdir")
 else:
     FSDIR = settings.MIDNIGHT_FILE_SYSTEM['BASE_DIR']
@@ -34,7 +34,7 @@ if not os.path.isdir(FSDIR):
     logging.debug(SUCC + "{} is created.".format(FSDIR))
 
 if not hasattr(settings, 'MIDNIGHT_FILE_SYSTEM')\
-        and 'BASE_URL' not in settings.MIDNIGHT_FILE_SYSTEM:
+        or 'BASE_URL' not in settings.MIDNIGHT_FILE_SYSTEM:
     FSURL = "/file/"
 else:
     FSURL = settings.MIDNIGHT_FILE_SYSTEM['BASE_URL']
