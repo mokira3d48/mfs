@@ -8,7 +8,7 @@ from django.utils.translation import gettext as _
 from django.db import models
 from . import FSDIR
 from . import FSURL
-from . import ERRO, SUCC, INFO
+from . import ERRO, SUCC, INFO, WARN
 from .exceptions import try_to_exec
 from .exceptions import PathNotDefinedError
 from .exceptions import FolderConcatenationError
@@ -51,7 +51,7 @@ class Folder(models.Model):
     class Meta:
         abstract = True
 
-    def __init__(self, path: str = '', *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         """Constructor of the file model.
 
         Args:
@@ -61,8 +61,14 @@ class Folder(models.Model):
         Raises:
             ValueError: The `path` string value is None.
         """
-        super(Folder, self).__init__(*args, **kwargs)
         self._instance = None
+        path = ''
+        if len(args) > 0 and type(args[0]) is str:
+            path = args[0]
+            args = [*args]
+            del args[0]
+
+        super(Folder, self).__init__(*args, **kwargs)
         self._path = self.set_path(path)
 
     @property
@@ -128,14 +134,15 @@ class Folder(models.Model):
                 ERRO + "The path string value must not be None"
                 )
 
-        value = value.strip()
-        if value != '':
-            if value.startswith('/'):
-                self.relpath = value
-            else:
-                self_ddn = self.get_default_dir_name()
-                self.relpath = os.path.join(self_ddn, value)
-            return value
+        if type(value) is str:
+            value = value.strip()
+            if value != '':
+                if value.startswith('/'):
+                    self.relpath = value
+                else:
+                    self_ddn = self.get_default_dir_name()
+                    self.relpath = os.path.join(self_ddn, value)
+                return value
         return None
 
     def exists(self):
@@ -168,6 +175,59 @@ class Folder(models.Model):
         raise NotImplemented(
             INFO + "This function must be implemented in the subclasss."
             )
+    
+    @try_to_exec()
+    def rename(self, new_name: str):
+        """Function that allows to rename this folder.
+
+        Returns:
+            Folder: Returns this instance after to rename it.
+
+        Raises:
+            ValueError: If `new_name` value is None.
+        """
+        if new_name is None:
+            raise ValueError(
+                ERRO + "If `new_name` must not be None."
+                )
+
+        self_relpath = self.relpath
+        if self_relpath.endswith('/'):
+            self_relpath = self_relpath[:-1]
+
+        parent_dir = os.path.split(self_relpath)[0]
+        new_relpath = os.path.join(parent_dir, new_name)
+        new_abspath = os.path.join(FSDIR, new_relpath[1:])
+
+        # We test if the folder to rename is a file
+        # and if another file does not already have the same name
+        # if it is the case.
+        is_file = isinstance(self, File)\
+            and not os.path.isfile(new_abspath)
+
+        # We test if the folder to rename is a folder
+        # and if another folder does not already have the same name
+        # if it is the case.
+        is_dir = isinstance(self, Dir)\
+            and not os.path.isdir(new_abspath)
+
+        if is_file or is_dir:
+            # If the old folder is exists in file system, then
+            # we rename it in file system.
+            folder_isexists = os.path.exists(self.abspath)
+            if folder_isexists:
+                os.rename(self.abspath, new_abspath)
+
+            self.relpath = new_relpath
+            if bool(self.pk):
+                super(Folder, self).save()
+            return self
+        elif os.path.isfile(new_abspath):
+            log.debug(WARN + "Another file has already named {}."\
+                .format(new_name))
+        elif os.path.isdir(new_abspath):
+            log.debug(WARN + "Another directory has already named {}."\
+                .format(new_name))
 
     def delete(self):
         """Function of folder deletion.
@@ -446,6 +506,7 @@ class File(Folder):
     parent_dir = models.ForeignKey(
         Dir,
         on_delete=models.CASCADE,
+        null=True,
         related_name='files',
         verbose_name=_('Parent directory')
         )
