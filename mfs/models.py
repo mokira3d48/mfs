@@ -332,7 +332,7 @@ class Folder(models.Model):
 
             is_saved = bool(self.pk)
             if is_saved:
-                super(Folder, self).save()
+                self.__class__.save(self)
                 is_done = is_done and True
             is_done = is_done or (not is_saved)
 
@@ -376,7 +376,8 @@ class Folder(models.Model):
             try:
                 instance = model.objects.get(relpath=self.relpath)
                 if instance:
-                    self = instance
+                    # self = instance
+                    self.__dict__ = instance.__dict__
             except:
                 pass
 
@@ -531,6 +532,20 @@ class Dir(Folder):
             format(self.relpath))
         return False
 
+    def subfolders(self):
+        """Generator of the sub-folders contained in this directory.
+        
+        Yield:
+            Folder: The next folder.
+        """
+        for directory in self.subdirectories:
+            yield directory
+
+        for f in self.files:
+            yield f
+        
+        raise StopIteration(INFO + "End of directory!")
+
     def __truediv__(self, f):
         """Function of / operator.
 
@@ -617,12 +632,21 @@ class Dir(Folder):
         Raises:
             ValueError: The `path` string value is None.
         """
+        self.path_defined()
+        # Raises PathNotDefinedError if the path is not defined.
+
         if issubclass(f.__class__, Folder):
-            if isinstance(f, Dir) and hasattr(self, 'subdirectories'):
-                self.subdirectories.add(f)
-            elif isinstance(f, File) and hasattr(self, 'files'):
-                self.files.add(f)
-            return self
+            if hasattr(self, 'subdirectories') and hasattr(self, 'files'):
+                f_moved = f.move_to(self)
+                if f_moved:
+                    if isinstance(f, Dir):
+                        self.subdirectories.add(f_moved)
+                    elif isinstance(f, File):
+                        self.files.add(f_moved)
+                else:
+                    log.debug(ERRO + "Unable to move {} to {}"\
+                        .format(f, self))
+        return self
 
 
 class File(Folder):
