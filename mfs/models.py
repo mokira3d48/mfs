@@ -4,6 +4,8 @@
 
 import os
 import logging as log
+import shutil
+
 from django.utils.translation import gettext as _
 from django.db import models
 from . import FSDIR
@@ -188,12 +190,15 @@ class Folder(models.Model):
         """
         if new_name is None:
             raise ValueError(
-                ERRO + "If `new_name` must not be None."
+                ERRO + "The variable of `new_name` must not be None."
                 )
 
         self_relpath = self.relpath
         if self_relpath.endswith('/'):
             self_relpath = self_relpath[:-1]
+
+        if new_name.endswith('/'):
+            new_name = new_name[:-1]
 
         parent_dir = os.path.split(self_relpath)[0]
         new_relpath = os.path.join(parent_dir, new_name)
@@ -228,6 +233,64 @@ class Folder(models.Model):
         elif os.path.isdir(new_abspath):
             log.debug(WARN + "Another directory has already named {}."\
                 .format(new_name))
+    
+    @try_to_exec()
+    def move_to(self, dest):
+        """Function to move a folfer to `dest` path.
+        
+        Args:
+            dest (:obj:`str|Dir`): The dest path or directory 
+                where you want to move this folder.
+
+        Returns:
+            Folder: Returns this instance after to move it.
+
+        Raises:
+            ValueError: If `new_name` value is None.
+        """
+        if dest is None:
+            raise ValueError(
+                ERRO + "The destination path (dest) must not be None."
+                )
+
+        if type(dest) is not str and not isinstance(dest, Dir):
+            raise TypeError(
+                ERRO + "The destination path (dest) must be"
+                " a string or Dir type."
+                )
+
+        if dest == '':
+            return False
+
+        self_relpath = self.relpath
+        response = False
+        if self_relpath.endswith('/'):
+            self_relpath = self_relpath[:-1]
+        filename = (os.path.split(self_relpath))[1]
+
+        dest_relpath = ''
+        if isinstance(dest, Dir):
+            dest_relpath = dest.relpath
+        elif type(dest) is str:
+            dest_relpath = dest
+
+        new_relpath = os.path.join(dest_relpath, filename)
+        folder_isexists = os.path.exists(self.abspath)
+        if folder_isexists:
+            new_abspath = os.path.join(FSDIR, new_relpath[1:])
+            shutil.move(self.abspath, new_abspath)
+            response = True
+        response = response or (not folder_isexists)
+
+        self.relpath = new_relpath
+        is_saved = bool(self.pk)
+        if is_saved:
+            super(Folder, self).save()
+            response = response and True
+        response = response or (not is_saved)
+
+        return response
+            
 
     def delete(self):
         """Function of folder deletion.
