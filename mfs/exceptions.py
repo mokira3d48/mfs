@@ -2,7 +2,7 @@ import logging as log
 import mfs
 
 
-class PathNotDefinedError(ValueError):
+class PathNotDefinedError(Exception):
     """Error class of path not defined
 
     This exception is used when the path of the 
@@ -11,8 +11,13 @@ class PathNotDefinedError(ValueError):
     pass
 
 
-class FolderConcatenationError(ValueError):
+class FolderConcatenationError(Exception):
     """Error of folder concatanation with / operator. """
+    pass
+
+
+class OperatingError(Exception):
+    """Logical error of operation. """
     pass
 
 
@@ -39,7 +44,9 @@ def try_to_exec():
             """
             try:
                 return f(*args, **kwargs)
-            except PathNotDefinedError as e:
+            except (PathNotDefinedError,
+                    OperatingError,
+                    FolderConcatenationError) as e:
                 raise e
             except Exception as e:
                 log.debug(mfs.ERRO + "Error type [{}]: {}".\

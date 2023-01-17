@@ -14,6 +14,7 @@ from . import ERRO, SUCC, INFO, WARN
 from .exceptions import try_to_exec
 from .exceptions import PathNotDefinedError
 from .exceptions import FolderConcatenationError
+from .exceptions import OperatingError
 
 
 class Folder(models.Model):
@@ -86,6 +87,9 @@ class Folder(models.Model):
             if dirname:
                 if not dirname.endswith('/'):
                     dirname = '{}/'.format(dirname)
+                
+                self.path_defined()
+                # Raises PathNotDefinedError if the path is not defined.
 
                 rel_path_split = self.relpath.split(dirname)
                 self._path = rel_path_split[1] if len(rel_path_split) > 1\
@@ -99,25 +103,41 @@ class Folder(models.Model):
     @property
     def abspath(self):
         """str: Returns the full path to the parent folder of this. """
-        if not self.relpath:
-            raise PathNotDefinedError(
-                ERRO + "The path of this directory is not defined."
-                " You can define it using set_path() function or"
-                " my_dir.path = 'your_relative_path'."
-                )
+        self.path_defined()
+        # Raises PathNotDefinedError if the path is not defined.
+
         return os.path.join(FSDIR, self.relpath[1:])
 
     def get_default_dir_name(self) -> str:
         """str: Returns the default directory name. """
         dirname = ''
-        if self.DEFAULT_DIR_NAME is None:
-            dirname = ''
-        else:
-            dirname = self.DEFAULT_DIR_NAME.strip()
+        if self.DEFAULT_DIR_NAME is not None:
+             dirname = self.DEFAULT_DIR_NAME.strip()
 
         return dirname\
             if dirname.startswith('/')\
                 else "/{}".format(dirname)
+
+    def get_parent_dir(self):
+        """Get parent directory of this folder.
+
+        Function that is used to retreive the parent directory
+        of this folder.
+
+        Returns:
+            :obj:`Dir`: A Dir instance built from the parent
+                directory.
+        """
+        if (isinstance(self, Dir) or isinstance(self, File))\
+            and self.path_defined():
+            # As a precautionary measure, we verify self instance.
+            self_relpath = self.relpath
+            if self_relpath.endswith('/'):
+                self_relpath = self_relpath[:-1]
+            
+            if self_relpath != '':
+                parent_dir_path = (os.path.split(self_relpath))[0]
+                return Dir(parent_dir_path)
 
     def set_path(self, value: str) -> str:
         """Function that is used to set path of this folder.
@@ -192,6 +212,17 @@ class Folder(models.Model):
             raise ValueError(
                 ERRO + "The variable of `new_name` must not be None."
                 )
+        if new_name == '/':
+            raise OperatingError(
+                ERRO + "Impossible to rename this folder to '/'."
+            )
+        if self.relpath == '/':
+            raise OperatingError(
+                ERRO + "Impossible to rename the root server directory."
+                )
+
+        self.path_defined()
+        # Raises PathNotDefinedError if the path is not defined.
 
         self_relpath = self.relpath
         if self_relpath.endswith('/'):
@@ -237,7 +268,7 @@ class Folder(models.Model):
     @try_to_exec()
     def move_to(self, dest):
         """Function to move a folfer to `dest` path.
-        
+
         Args:
             dest (:obj:`str|Dir`): The dest path or directory 
                 where you want to move this folder.
@@ -258,18 +289,26 @@ class Folder(models.Model):
                 ERRO + "The destination path (dest) must be"
                 " a string or Dir type."
                 )
+        if self.relpath == '/':
+            raise OperatingError(
+                ERRO + "Impossible to move the root server directory"
+                " to any directory."
+                )
 
         if dest == '':
             return False
+        
+        self.path_defined()
+        # Raises PathNotDefinedError if the path is not defined.
 
         self_relpath = self.relpath
-        response = False
+        is_done = False
         if self_relpath.endswith('/'):
             self_relpath = self_relpath[:-1]
         filename = (os.path.split(self_relpath))[1]
 
         dest_relpath = ''
-        if isinstance(dest, Dir):
+        if isinstance(dest, Dir) and dest.path_defined():
             dest_relpath = dest.relpath
         elif type(dest) is str:
             dest_relpath = dest
@@ -278,21 +317,26 @@ class Folder(models.Model):
         folder_isexists = os.path.exists(self.abspath)
         if folder_isexists:
             new_abspath = os.path.join(FSDIR, new_relpath[1:])
-            shutil.move(self.abspath, new_abspath)
-            response = True
-        response = response or (not folder_isexists)
+            if not os.path.exists(new_abspath):
+                shutil.move(self.abspath, new_abspath)
+                is_done = True
+            else:
+                log.debug(WARN + "The destination path '{}' is already exists."\
+                    .format(dest))
 
-        self.relpath = new_relpath
-        if isinstance(self, Dir):
-            self.relpath += '/'
+        is_done = is_done or (not folder_isexists)
+        if is_done:
+            self.relpath = new_relpath
+            if isinstance(self, Dir):
+                self.relpath += '/'
 
-        is_saved = bool(self.pk)
-        if is_saved:
-            super(Folder, self).save()
-            response = response and True
-        response = response or (not is_saved)
+            is_saved = bool(self.pk)
+            if is_saved:
+                super(Folder, self).save()
+                is_done = is_done and True
+            is_done = is_done or (not is_saved)
 
-        return self if response == True else False
+        return self if is_done else False
 
     def delete(self):
         """Function of folder deletion.
@@ -303,6 +347,40 @@ class Folder(models.Model):
         raise NotImplemented(
             INFO + "This function must be implemented in the subclasss."
             )
+    
+    def path_defined(self):
+        """Function to check if the folder path is defined.
+
+        Returns:
+            bool: Return True, if the path of this folder is defined.
+
+        Raises:
+            PathNotDefinedError: If the path of this folder
+                is not defined.
+        """
+        if not self.relpath:
+            raise PathNotDefinedError(
+                ERRO + "The path of this directory is not defined."
+                " You can define it using set_path() function or"
+                " my_dir.path = 'your_relative_path'."
+                )
+        return True
+
+    def save(self, *args, **kwargs):
+        self.path_defined()
+        # Raises PathNotDefinedError if the path is not defined.
+
+        is_saved = bool(self.pk)
+        if not is_saved:
+            model = self.__class__
+            try:
+                instance = model.objects.get(relpath=self.relpath)
+                if instance:
+                    self = instance
+            except:
+                pass
+
+        return super(Folder, self).save(*args, **kwargs)
 
     def __str__(self):
         """Function to represent a file as a of a string of characters.
@@ -381,7 +459,7 @@ class Dir(Folder):
                 log.debug(SUCC + "Directory at -> {} is created."\
                     .format(self.relpath))
             else:
-                log.debug(INFO + "Directory at -> {} is already exists."\
+                log.debug(WARN + "Directory at -> {} is already exists."\
                         .format(self.relpath))
             return True
         else:
@@ -457,8 +535,8 @@ class Dir(Folder):
         """Function of / operator.
 
         This function will be called when we make the following operation
-        example: dir1 = dir1 / file1 
-            or dir1 = dir1 / "my_folder_path"
+        example: new_file_instance = dir1 / file_instance 
+            or dir1 = dir1 / "my_directory_path"
 
         Args:
             f (mixed): Represents the folder path or folder instance.
@@ -476,13 +554,10 @@ class Dir(Folder):
                 ERRO + "{} must be a string or a folder type.".format(str(f))
             )
 
+        self.path_defined()
+        # Raises PathNotDefinedError if the path is not defined.
+
         self_relpath = self.relpath
-        if not self_relpath:
-            raise PathNotDefinedError(
-                ERRO + "The path of this directory is not defined."
-                " You can define it using set_path() function or"
-                " my_dir.path = 'your_relative_path'."
-                )
 
         # if isinstance(f, File):
         #    if not f.relpath:
@@ -497,29 +572,18 @@ class Dir(Folder):
         if type(f) is str:
             if f != '':
                 path = ''  # The variable will contains the final path.
-
-                # If at the beginning of the string we have
-                # the character '/' then we do a merge.
-                # Otherwise, we do a concatenation.
                 if f.startswith('/'):
-                    startedwith = bool(f.startswith(self_relpath))
-                    if not startedwith:
-                        raise FolderConcatenationError(
-                            ERRO + "Unable to concatenate the following"
-                            " two paths: {} and {}".format(self_relpath, f)
-                        )
+                    f = f[1:]
 
-                    path = f
-                else:
-                    path = os.path.join(self_relpath, f)
-
+                path = os.path.join(self_relpath, f)
                 if not path.endswith('/'):
                     path = "{}/".format(path)
-                return Dir(path=path)
+
+                return Dir(path)
             else:
                 # If the string to concatenate is empty then a new folder 
                 # with the path to that folder is returned.
-                return Dir(path=self_relpath)
+                return Dir(self_relpath)
         elif isinstance(f, Dir):
             if not f.relpath:
                 raise PathNotDefinedError(
@@ -658,7 +722,7 @@ class File(Folder):
             bool: Returns False if the file openning is field.
         
         Raises:
-            ValueError: The `path` string value is None.
+            PathNotDefinedError: The `path` string value is None.
         """
         isfile = self.touch()
         if isfile:
@@ -678,7 +742,7 @@ class File(Folder):
             **kwargs: Additional keyword arguments.
 
         Raises:
-            ValueError: The `path` string value is None.
+            PathNotDefinedError: The `path` string value is None.
         """
         created = self.touch()
         if created:
@@ -699,7 +763,7 @@ class File(Folder):
                 Else, returns False.
 
         Raises:
-            ValueError: The `path` string value is None.
+            PathNotDefinedError: The `path` string value is None.
         """
         if self.exists():
             os.remove(self.abspath)
@@ -707,6 +771,6 @@ class File(Folder):
             log.info(SUCC + "File at -> {} is deleted.".format(self.relpath))
             return True
         else:
-            log.info(INFO + "File of {} is not exists.".format(self.relpath))
+            log.info(WARN + "File of {} is not exists.".format(self.relpath))
         return False
 
