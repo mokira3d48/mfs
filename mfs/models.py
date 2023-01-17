@@ -63,7 +63,6 @@ class Folder(models.Model):
         Raises:
             ValueError: The `path` string value is None.
         """
-        self._instance = None
         path = ''
         if len(args) > 0 and type(args[0]) is str:
             path = args[0]
@@ -72,6 +71,7 @@ class Folder(models.Model):
 
         super(Folder, self).__init__(*args, **kwargs)
         self._path = self.set_path(path)
+        self._instance = None
 
     @property
     def i_(self):
@@ -283,14 +283,16 @@ class Folder(models.Model):
         response = response or (not folder_isexists)
 
         self.relpath = new_relpath
+        if isinstance(self, Dir):
+            self.relpath += '/'
+
         is_saved = bool(self.pk)
         if is_saved:
             super(Folder, self).save()
             response = response and True
         response = response or (not is_saved)
 
-        return response
-            
+        return self if response == True else False
 
     def delete(self):
         """Function of folder deletion.
