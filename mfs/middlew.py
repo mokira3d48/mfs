@@ -63,7 +63,7 @@ class FileAccessMiddleware:
                 data = jwt.decode(token,
                                   settings.SECRET_KEY,
                                   algorithms=['HS256'])
-                log.debug(SUCC + "Middleware OK - Retreiving folder.")
+                log.debug(SUCC + "Middleware OK - Retreive folder.")
                 return self.get_response(request)
         except:
             log.debug(ERRO + "Error code 403 - Access denied.")

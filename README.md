@@ -85,6 +85,14 @@ MIDNIGHT_FILE_SYSTEM = {
     'BASE_URL': '/file/',
 }
 
+# ...
+
+# Django guardian settings
+AUTHENTICATION_BACKENDS = (
+    'django.contrib.auth.backends.ModelBackend',  # this is default
+    'guardian.backends.ObjectPermissionBackend',
+)
+
 ```
 
 3. In `urls.py` file, write the following code:

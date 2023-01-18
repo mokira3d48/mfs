@@ -15,8 +15,8 @@ class FileField(serializers.FileField):
             raise ValueError(ERRO + "Type of file missing.")
 
         if not issubclass(self._file_type, File):
-            raise TypeError(ERRO\
-                + "The type of the file must be a subclass"
+            raise TypeError(
+                ERRO + "The type of the file must be a subclass"
                 " of mfs.models.File."
                 )
 

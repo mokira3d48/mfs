@@ -184,24 +184,24 @@ def find(filename, fclass, dirname=FSDIR):
                             return result
 
 
-def get_file_uploaded(file_uploaded, file_model, filedir=''):
+def get_file_uploaded(file_uploaded, file_model):
     """Function to retrieve an uploaded file.
 
     Args:
         file_uploaded (mixed): File uploaded info.
         file_model (:class:`mfs.models.File`): The subclass of a File.
-        filedir
+    
+    Returns:
+        mfs.models.File: Return an instance of the file uploaded.
+            This instance will not be saved yet.
     """
-    # info(request.FILES);
     if file_uploaded:
-        instance = file_model(path=str(file_uploaded)).touch()
-        moved = handle_uploaded_file(file_uploaded, instance.filepath)
+        instance = file_model(str(file_uploaded))
+        moved = handle_uploaded_file(file_uploaded, instance.abspath)
         if moved:
-            log.debug(INFO + "{}".format(file_uploaded))
-            log.debug(INFO + "{}".format(file_uploaded.content_type))
-            ctsplited = file_uploaded.content_type.split('/')
-            if len(ctsplited) >= 2:
-                instance.ext = ctsplited[1]
+            log.debug(INFO + "File uploaded: {}".format(file_uploaded))
+            log.debug(INFO + "Content type:  {}"\
+                .format(file_uploaded.content_type))
             return instance
         else:
             log.debug(ERRO + "Moving of file uploaded is failed.")

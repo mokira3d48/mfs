@@ -6,14 +6,16 @@ import os
 import logging as log
 import shutil
 
+from django.contrib.auth.models import Permission
+from django.contrib.auth.models import User
 from django.utils.translation import gettext as _
 from django.db import models
+from guardian.shortcuts import assign_perm
 from . import FSDIR
-from . import FSURL
 from . import ERRO, SUCC, INFO, WARN
+from . import UPLOAD_PERMISSION, DOWNLOAD_PERMISSION
 from .exceptions import try_to_exec
 from .exceptions import PathNotDefinedError
-from .exceptions import FolderConcatenationError
 from .exceptions import OperatingError
 
 
@@ -87,12 +89,12 @@ class Folder(models.Model):
             if dirname:
                 if not dirname.endswith('/'):
                     dirname = '{}/'.format(dirname)
-                
+
                 self.path_defined()
                 # Raises PathNotDefinedError if the path is not defined.
 
                 rel_path_split = self.relpath.split(dirname)
-                self._path = rel_path_split[1] if len(rel_path_split) > 1\
+                self._path = rel_path_split[1] if len(rel_path_split) > 1 \
                     else rel_path_split[0]
         return self._path
 
@@ -112,11 +114,11 @@ class Folder(models.Model):
         """str: Returns the default directory name. """
         dirname = ''
         if self.DEFAULT_DIR_NAME is not None:
-             dirname = self.DEFAULT_DIR_NAME.strip()
+            dirname = self.DEFAULT_DIR_NAME.strip()
 
-        return dirname\
-            if dirname.startswith('/')\
-                else "/{}".format(dirname)
+        return dirname \
+            if dirname.startswith('/') \
+            else "/{}".format(dirname)
 
     def get_parent_dir(self):
         """Get parent directory of this folder.
@@ -128,13 +130,13 @@ class Folder(models.Model):
             :obj:`Dir`: A Dir instance built from the parent
                 directory.
         """
-        if (isinstance(self, Dir) or isinstance(self, File))\
-            and self.path_defined():
+        if (isinstance(self, Dir) or isinstance(self, File)) \
+                and self.path_defined():
             # As a precautionary measure, we verify self instance.
             self_relpath = self.relpath
             if self_relpath.endswith('/'):
                 self_relpath = self_relpath[:-1]
-            
+
             if self_relpath != '':
                 parent_dir_path = (os.path.split(self_relpath))[0]
                 return Dir(parent_dir_path)
@@ -153,8 +155,8 @@ class Folder(models.Model):
         """
         if value is None:
             raise PathNotDefinedError(
-                ERRO + "The path string value must not be None"
-                )
+                ERRO + "The path string value must not be None."
+            )
 
         if type(value) is str:
             value = value.strip()
@@ -177,12 +179,12 @@ class Folder(models.Model):
             bool: Returns True if this file is exists.
         """
         # raise NotImplemented(
-        #    INFO + "This function must be implemented in the subclasss"
-        #    " and must return an boolean value."
+        #    INFO + "This function must be implemented in the sub class"
+        #    " and must return a boolean value."
         #    )
         return os.path.exists(self.abspath)
 
-    def open(self,  **kwargs):
+    def open(self, **kwargs):
         """Function of folder openning.
 
         This function is abstract. Must be reimplemented
@@ -196,8 +198,8 @@ class Folder(models.Model):
         """
         raise NotImplemented(
             INFO + "This function must be implemented in the subclasss."
-            )
-    
+        )
+
     @try_to_exec()
     def rename(self, new_name: str):
         """Function that allows to rename this folder.
@@ -211,7 +213,7 @@ class Folder(models.Model):
         if new_name is None:
             raise ValueError(
                 ERRO + "The variable of `new_name` must not be None."
-                )
+            )
         if new_name == '/':
             raise OperatingError(
                 ERRO + "Impossible to rename this folder to '/'."
@@ -219,7 +221,7 @@ class Folder(models.Model):
         if self.relpath == '/':
             raise OperatingError(
                 ERRO + "Impossible to rename the root server directory."
-                )
+            )
 
         self.path_defined()
         # Raises PathNotDefinedError if the path is not defined.
@@ -239,13 +241,13 @@ class Folder(models.Model):
         # and if another file does not already have the same name
         # if it is the case.
         is_file = isinstance(self, File)\
-            and not os.path.isfile(new_abspath)
+                  and not os.path.isfile(new_abspath)
 
         # We test if the folder to rename is a folder
         # and if another folder does not already have the same name
         # if it is the case.
         is_dir = isinstance(self, Dir)\
-            and not os.path.isdir(new_abspath)
+                 and not os.path.isdir(new_abspath)
 
         if is_file or is_dir:
             # If the old folder is exists in file system, then
@@ -259,12 +261,12 @@ class Folder(models.Model):
                 super(Folder, self).save()
             return self
         elif os.path.isfile(new_abspath):
-            log.debug(WARN + "Another file has already named {}."\
-                .format(new_name))
+            log.debug(WARN + "Another file has already named {}." \
+                      .format(new_name))
         elif os.path.isdir(new_abspath):
-            log.debug(WARN + "Another directory has already named {}."\
-                .format(new_name))
-    
+            log.debug(WARN + "Another directory has already named {}." \
+                      .format(new_name))
+
     @try_to_exec()
     def move_to(self, dest):
         """Function to move a folfer to `dest` path.
@@ -282,22 +284,22 @@ class Folder(models.Model):
         if dest is None:
             raise ValueError(
                 ERRO + "The destination path (dest) must not be None."
-                )
+            )
 
         if type(dest) is not str and not isinstance(dest, Dir):
             raise TypeError(
                 ERRO + "The destination path (dest) must be"
-                " a string or Dir type."
-                )
+                       " a string or Dir type."
+            )
         if self.relpath == '/':
             raise OperatingError(
                 ERRO + "Impossible to move the root server directory"
-                " to any directory."
-                )
+                       " to any directory."
+            )
 
         if dest == '':
             return False
-        
+
         self.path_defined()
         # Raises PathNotDefinedError if the path is not defined.
 
@@ -321,8 +323,8 @@ class Folder(models.Model):
                 shutil.move(self.abspath, new_abspath)
                 is_done = True
             else:
-                log.debug(WARN + "The destination path '{}' is already exists."\
-                    .format(dest))
+                log.debug(WARN + "The destination path '{}' is already exists." \
+                          .format(dest))
 
         is_done = is_done or (not folder_isexists)
         if is_done:
@@ -346,8 +348,8 @@ class Folder(models.Model):
         """
         raise NotImplemented(
             INFO + "This function must be implemented in the subclasss."
-            )
-    
+        )
+
     def path_defined(self):
         """Function to check if the folder path is defined.
 
@@ -361,9 +363,9 @@ class Folder(models.Model):
         if not self.relpath:
             raise PathNotDefinedError(
                 ERRO + "The path of this directory is not defined."
-                " You can define it using set_path() function or"
-                " my_dir.path = 'your_relative_path'."
-                )
+                       " You can define it using set_path() function or"
+                       " my_dir.path = 'your_relative_path'."
+            )
         return True
 
     def save(self, *args, **kwargs):
@@ -382,6 +384,52 @@ class Folder(models.Model):
                 pass
 
         return super(Folder, self).save(*args, **kwargs)
+
+    def allows(self, permission: int, /, to):
+        """Function of permission admin.
+        This function give a specific permission to an user on this folder.
+        
+        Args:
+            permission (int): The permission value between the following
+                constant: DOWNLOAD_PERMISSION, UPLOAD_PERMISSION.
+            to (:obj:`django.contrib.auth.models.User`): The target user
+                will receive the permission.
+
+        Returns:
+            Folder: Returns this folder instance.
+
+        Raises:
+            ValueError: If the value `permission` variable not in
+                the following constante:
+                    - DOWNLOAD_PERMISSION,
+                    - UPLOAD_PERMISSION.
+            TypeError: If the user instance is not a object of
+                django.contrib.auth.models.User.
+        """
+        if permission not in (UPLOAD_PERMISSION,
+                              DOWNLOAD_PERMISSION):
+            raise ValueError(
+                ERRO + "The value of the permission must be between:\n"
+                "\t - UPLOAD_PERMISSION;\n"
+                "\t - DOWNLOAD_PERMISSION."
+            )
+        if not isinstance(to, User):
+            raise TypeError(
+                ERRO + "The content of `to` must be an instance of"
+                " django.contrib.auth.models.User."
+            )
+
+        try:
+            # perm = Permission.objects.get(codename=permission)
+            # assign_perm(f'mfs.{perm.codename}', to, self)
+            assign_perm(f'mfs.{permission}', to, self)
+            return self
+        except Permission.DoesNotExist:
+            raise OperatingError(
+                ERRO + "You forgot to execute the following command line to"
+                " create the basic initial permissions for file management:\n",
+                " ~$ python manage.py mfsinit"
+            )
 
     def __str__(self):
         """Function to represent a file as a of a string of characters.
@@ -405,13 +453,13 @@ class Dir(Folder):
         null=True,
         related_name='subdirectories',
         verbose_name=_('Parent directory')
-        )
+    )
 
     class Meta:
-        verbose_name = _("Directory")
-        verbose_name_plural = _("Directories")
+        verbose_name = _("directory")
+        verbose_name_plural = _("directories")
         ordering = ['updated_at']
-    
+
     def set_path(self, value: str) -> str:
         """Function that is used to set path of this folder.
 
@@ -457,15 +505,15 @@ class Dir(Folder):
             if not self.exists():
                 # We check if the uploading directory is exists.
                 os.makedirs(self.abspath)
-                log.debug(SUCC + "Directory at -> {} is created."\
-                    .format(self.relpath))
+                log.debug(SUCC + "Directory at -> {} is created." \
+                          .format(self.relpath))
             else:
-                log.debug(WARN + "Directory at -> {} is already exists."\
-                        .format(self.relpath))
+                log.debug(WARN + "Directory at -> {} is already exists." \
+                          .format(self.relpath))
             return True
         else:
-            log.debug(ERRO + "The fs directory -> {} is not exists."\
-                .format(FSDIR))
+            log.debug(ERRO + "The fs directory -> {} is not exists." \
+                      .format(FSDIR))
 
         return False
 
@@ -507,8 +555,8 @@ class Dir(Folder):
         if created:
             return super(Dir, self).save(*args, **kwargs)
 
-        log.debug(ERRO + "Unable to save this directory at -> {} !"\
-            .format(self.relpath))
+        log.debug(ERRO + "Unable to save this directory at -> {} !" \
+                  .format(self.relpath))
 
     @try_to_exec()
     def delete(self):
@@ -524,12 +572,12 @@ class Dir(Folder):
         if self.exists():
             os.rmdir(self.abspath)
             self.delete()
-            log.debug(SUCC + "Directory at -> {} is deleted."\
-                .format(self.relpath))
+            log.debug(SUCC + "Directory at -> {} is deleted." \
+                      .format(self.relpath))
             return True
 
-        log.debug(ERRO + "Directory of {} is not exists.".\
-            format(self.relpath))
+        log.debug(ERRO + "Directory of {} is not exists." \
+                  .format(self.relpath))
         return False
 
     def subfolders(self):
@@ -543,7 +591,7 @@ class Dir(Folder):
 
         for f in self.files:
             yield f
-        
+
         raise StopIteration(INFO + "End of directory!")
 
     def __truediv__(self, f):
@@ -574,14 +622,6 @@ class Dir(Folder):
 
         self_relpath = self.relpath
 
-        # if isinstance(f, File):
-        #    if not f.relpath:
-        #        raise PathNotDefinedError(
-        #            ERRO + "The path of `f` file passed in argument"
-        #            " is not defined."
-        #            )
-        #    f = f.relpath
-
         # If the argument is a string, then the following
         # string processing is done:
         if type(f) is str:
@@ -603,19 +643,18 @@ class Dir(Folder):
             if not f.relpath:
                 raise PathNotDefinedError(
                     ERRO + "The path of `f` directory passed in argument"
-                    " is not defined."
-                    )
+                           " is not defined."
+                )
             path = os.path.join(self_relpath, f.relpath[1:])
             return Dir(path)
         elif isinstance(f, File):
             if not f.relpath:
                 raise PathNotDefinedError(
                     ERRO + "The path of `f` file passed in argument"
-                    " is not defined."
-                    )
+                           " is not defined."
+                )
             path = os.path.join(self_relpath, f.relpath[1:])
             return f.__class__(path)
-
 
     def __iadd__(self, f: Folder):
         """Implementation of += operator
@@ -644,8 +683,8 @@ class Dir(Folder):
                     elif isinstance(f, File):
                         self.files.add(f_moved)
                 else:
-                    log.debug(ERRO + "Unable to move {} to {}"\
-                        .format(f, self))
+                    log.debug(ERRO + "Unable to move {} to {}" \
+                              .format(f, self))
         return self
 
 
@@ -662,7 +701,7 @@ class File(Folder):
         null=True,
         related_name='files',
         verbose_name=_('Parent directory')
-        )
+    )
     size = models.PositiveBigIntegerField(null=True,
                                           verbose_name=_("Size (byte)"))
 
@@ -691,12 +730,12 @@ class File(Folder):
             # If it's not exists, then create it.
             if not os.path.exists(self.parent_dir_path):
                 os.makedirs(self.parent_dir_path)
-                log.debug(SUCC + "Directory at -> {} is created."\
-                    .format(self.parent_dir_path))
+                log.debug(SUCC + "Directory at -> {} is created." \
+                          .format(self.parent_dir_path))
             return True
         else:
-            log.debug(INFO + "The fs directory -> {} is not exists."\
-                .format(FSDIR))
+            log.debug(INFO + "The fs directory -> {} is not exists." \
+                      .format(FSDIR))
             return False
 
     @try_to_exec()
@@ -718,8 +757,8 @@ class File(Folder):
             if not os.path.isfile(self.abspath):
                 f = open(self.abspath, 'x')
                 f.close()
-                log.info(SUCC + "File at -> {} is created."\
-                    .format(self.abspath))
+                log.info(SUCC + "File at -> {} is created." \
+                         .format(self.abspath))
             return self
         return False
 
@@ -735,7 +774,7 @@ class File(Folder):
         return os.path.isfile(self.abspath)
 
     @try_to_exec()
-    def open(self,  mode='rt'):
+    def open(self, mode='rt'):
         """Function to open a file.
 
         Args:
@@ -775,8 +814,8 @@ class File(Folder):
             self.size = os.path.getsize(self.abspath)
             return super(File, self).save(*args, **kwargs)
 
-        log.info(ERRO + "Unable to save this file at -> {} !"\
-            .format(self.relpath))
+        log.info(ERRO + "Unable to save this file at -> {} !" \
+                 .format(self.relpath))
 
     @try_to_exec()
     def delete(self):
@@ -797,4 +836,3 @@ class File(Folder):
         else:
             log.info(WARN + "File of {} is not exists.".format(self.relpath))
         return False
-

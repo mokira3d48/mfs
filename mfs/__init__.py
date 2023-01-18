@@ -39,3 +39,30 @@ if not hasattr(settings, 'MIDNIGHT_FILE_SYSTEM')\
 else:
     FSURL = settings.MIDNIGHT_FILE_SYSTEM['BASE_URL']
 
+
+# Permission constants
+UPLOAD_PERMISSION = "upload"
+DOWNLOAD_PERMISSION = "download"
+
+
+# Django Guardian module settings
+# -------------------------------
+#
+# Setting application
+if not hasattr(settings, 'INSTALLED_APPS'):
+    settings.INSTALLED_APPS = []
+
+if 'guardian' not in settings.INSTALLED_APPS:
+    if type(settings.INSTALLED_APPS) is tuple:
+        installed_apps = settings.INSTALLED_APPS
+        settings.INSTALLED_APPS = [*installed_apps]
+
+    settings.INSTALLED_APPS.append('guardian')
+
+# AUTHENTICATION_BACKENDS setting
+if not hasattr(settings, 'AUTHENTICATION_BACKENDS'):
+    settings.AUTHENTICATION_BACKENDS = (
+        'django.contrib.auth.backends.ModelBackend',  # this is default
+        'guardian.backends.ObjectPermissionBackend',
+    )
+

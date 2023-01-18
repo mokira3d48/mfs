@@ -1,5 +1,4 @@
 import socket
-from .exceptions import PathNotDefinedError
 
 
 def get_hostname() -> str:
@@ -42,7 +41,8 @@ def handle_uploaded_file(f, absfilepath):
         return True
     except Exception as e:
         # In case of error, we display the error and return False
-        print(f"[ERR]\t {e}")
+        print("[ \033[91mERRO\033[0m ]"\
+            + f"[e.__class__.__name__] message: {e}")
         return False
 
 

@@ -4,7 +4,9 @@ Example:
     ~$ ./server/manage.py test mfs.tests.DirTestCase.save
 """
 
+from django.contrib.auth.models import User
 from django.test import TestCase
+from . import UPLOAD_PERMISSION, DOWNLOAD_PERMISSION
 from .models import Dir
 
 
@@ -85,5 +87,16 @@ class DirTestCase(TestCase):
         d += d2
         
         print(d.subdirectories.all())
+
+    def allows(self):
+        u = User(username="jeff")
+        d = Dir('mydir')
+
+        d.save()
+        u.save()
+
+        # allow permission
+        print(d.allows(DOWNLOAD_PERMISSION, to=u))
+
 
 
