@@ -388,7 +388,7 @@ class Folder(models.Model):
     def allows(self, permission: int, /, to):
         """Function of permission admin.
         This function give a specific permission to an user on this folder.
-        
+
         Args:
             permission (int): The permission value between the following
                 constant: DOWNLOAD_PERMISSION, UPLOAD_PERMISSION.
@@ -496,7 +496,7 @@ class Dir(Folder):
 
         Returns:
             bool: Returns True if the directory specified to 
-            `self.dirpath`. Else, returns False.
+                `self.dirpath`. Else, returns False.
 
         Raises:
             ValueError: The `path` string value is None.
@@ -517,7 +517,6 @@ class Dir(Folder):
 
         return False
 
-    @try_to_exec()
     def open(self, **kwargs):
         """Function that is used to open this directory.
 
@@ -533,9 +532,28 @@ class Dir(Folder):
             ValueError: The `path` string value is None.
         """
         if self.exists():
-            self._instance = os.listdir(self.abspath)
-            return self._instance
-        return False
+            # We retrieve the class of the file to represent
+            # the files of this folder.
+            file_model = None
+            if 'file_model' in kwargs:
+                file_model = kwargs.get('file_model')
+                if not issubclass(file_model, Folder):
+                    raise TypeError(
+                        ERRO + "file_model must be a folder sub-class."
+                        )
+
+            directory = os.listdir(self.abspath)
+            for folder in directory:
+                folder_path = os.path.join(self.abspath, folder)
+                if os.path.isdir(folder_path):
+                    yield Dir(folder_path)
+                elif file_model:
+                    if os.path.isfile(folder_path):
+                        yield file_model(folder_path)
+                else:
+                    log.debug(WARN + "`{}` file is found, but no file class"
+                        " is not defined.".format(folder))
+                    continue
 
     @try_to_exec()
     def save(self, *args, **kwargs):
@@ -636,7 +654,7 @@ class Dir(Folder):
 
                 return Dir(path)
             else:
-                # If the string to concatenate is empty then a new folder 
+                # If the string to concatenate is empty then a new folder
                 # with the path to that folder is returned.
                 return Dir(self_relpath)
         elif isinstance(f, Dir):
@@ -683,7 +701,7 @@ class Dir(Folder):
                     elif isinstance(f, File):
                         self.files.add(f_moved)
                 else:
-                    log.debug(ERRO + "Unable to move {} to {}" \
+                    log.debug(ERRO + "Unable to move {} to {}"\
                               .format(f, self))
         return self
 
@@ -730,11 +748,11 @@ class File(Folder):
             # If it's not exists, then create it.
             if not os.path.exists(self.parent_dir_path):
                 os.makedirs(self.parent_dir_path)
-                log.debug(SUCC + "Directory at -> {} is created." \
+                log.debug(SUCC + "Directory at -> {} is created."\
                           .format(self.parent_dir_path))
             return True
         else:
-            log.debug(INFO + "The fs directory -> {} is not exists." \
+            log.debug(INFO + "The fs directory -> {} is not exists."\
                       .format(FSDIR))
             return False
 
@@ -757,7 +775,7 @@ class File(Folder):
             if not os.path.isfile(self.abspath):
                 f = open(self.abspath, 'x')
                 f.close()
-                log.info(SUCC + "File at -> {} is created." \
+                log.info(SUCC + "File at -> {} is created."\
                          .format(self.abspath))
             return self
         return False
@@ -814,7 +832,7 @@ class File(Folder):
             self.size = os.path.getsize(self.abspath)
             return super(File, self).save(*args, **kwargs)
 
-        log.info(ERRO + "Unable to save this file at -> {} !" \
+        log.info(ERRO + "Unable to save this file at -> {} !"\
                  .format(self.relpath))
 
     @try_to_exec()
@@ -836,3 +854,4 @@ class File(Folder):
         else:
             log.info(WARN + "File of {} is not exists.".format(self.relpath))
         return False
+
